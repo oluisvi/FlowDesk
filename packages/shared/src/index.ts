@@ -25,6 +25,8 @@ export {
   PrioritySchema,
   ProjectStatusSchema,
   TaskStatusSchema,
+  UpdateClientSchema,
+  UpdateProjectSchema,
   UpdateTaskSchema,
 } from "./contracts/operations";
 export type {
@@ -36,4 +38,6 @@ export type {
   TaskStatus,
   ProjectStatus,
   UpdateTaskInput,
+  UpdateClientInput,
+  UpdateProjectInput,
 } from "./contracts/operations";

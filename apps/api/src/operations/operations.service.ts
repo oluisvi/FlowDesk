@@ -11,6 +11,9 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
   TaskStatus,
+  ProjectStatus,
+  UpdateClientInput,
+  UpdateProjectInput,
 } from "@flowdesk/shared";
 import type { RequestIdentity } from "../authorization/request-identity";
 import { PolicyService } from "../authorization/policy.service";
@@ -59,6 +62,38 @@ export class OperationsService {
     return client;
   }
 
+  async updateClient(
+    identity: RequestIdentity,
+    workspaceId: string,
+    clientId: string,
+    input: UpdateClientInput,
+  ) {
+    const access = await this.access.resolve(identity, workspaceId);
+    this.policy.assert(access, "operations:write");
+    if (input.assignedMemberId)
+      await this.assertMembership(workspaceId, input.assignedMemberId);
+    const client = await this.repository.updateClient(
+      workspaceId,
+      clientId,
+      input,
+    );
+    if (!client) throw new NotFoundException("Client not found");
+    return client;
+  }
+
+  async archiveClient(
+    identity: RequestIdentity,
+    workspaceId: string,
+    clientId: string,
+  ): Promise<void> {
+    const access = await this.access.resolve(identity, workspaceId);
+    this.policy.assert(access, "operations:write");
+    if (
+      !(await this.repository.archiveClient(workspaceId, clientId, new Date()))
+    )
+      throw new NotFoundException("Client not found");
+  }
+
   async createProject(
     identity: RequestIdentity,
     workspaceId: string,
@@ -75,6 +110,57 @@ export class OperationsService {
       );
     }
     return this.repository.createProject(workspaceId, input);
+  }
+
+  async listProjects(
+    identity: RequestIdentity,
+    workspaceId: string,
+    filters: { status?: ProjectStatus },
+  ) {
+    await this.access.resolve(identity, workspaceId);
+    return this.repository.listProjects(workspaceId, filters);
+  }
+
+  async updateProject(
+    identity: RequestIdentity,
+    workspaceId: string,
+    projectId: string,
+    input: UpdateProjectInput,
+  ) {
+    const access = await this.access.resolve(identity, workspaceId);
+    this.policy.assert(access, "operations:write");
+    if (
+      input.clientId &&
+      !(await this.repository.findClient(workspaceId, input.clientId))
+    ) {
+      throw new UnprocessableEntityException(
+        "Client does not belong to workspace",
+      );
+    }
+    const project = await this.repository.updateProject(
+      workspaceId,
+      projectId,
+      input,
+    );
+    if (!project) throw new NotFoundException("Project not found");
+    return project;
+  }
+
+  async archiveProject(
+    identity: RequestIdentity,
+    workspaceId: string,
+    projectId: string,
+  ): Promise<void> {
+    const access = await this.access.resolve(identity, workspaceId);
+    this.policy.assert(access, "operations:write");
+    if (
+      !(await this.repository.archiveProject(
+        workspaceId,
+        projectId,
+        new Date(),
+      ))
+    )
+      throw new NotFoundException("Project not found");
   }
 
   async createTask(
@@ -208,6 +294,31 @@ export class OperationsService {
     );
     if (!notification) throw new NotFoundException("Notification not found");
     return notification;
+  }
+
+  async listNotifications(
+    identity: RequestIdentity,
+    workspaceId: string,
+    unread?: boolean,
+  ) {
+    await this.access.resolve(identity, workspaceId);
+    return this.repository.listNotifications(
+      workspaceId,
+      identity.userId,
+      unread,
+    );
+  }
+
+  async markAllNotificationsRead(
+    identity: RequestIdentity,
+    workspaceId: string,
+  ): Promise<void> {
+    await this.access.resolve(identity, workspaceId);
+    await this.repository.markAllNotificationsRead(
+      workspaceId,
+      identity.userId,
+      new Date(),
+    );
   }
 
   async dashboard(identity: RequestIdentity, workspaceId: string) {

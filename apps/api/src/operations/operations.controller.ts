@@ -18,7 +18,10 @@ import {
   CreateProjectSchema,
   CreateTaskSchema,
   CreateTaskCommentSchema,
+  ProjectStatusSchema,
   UpdateTaskSchema,
+  UpdateClientSchema,
+  UpdateProjectSchema,
   TaskStatusSchema,
 } from "@flowdesk/shared";
 import { AccessGuard } from "../auth/access.guard";
@@ -69,6 +72,31 @@ export class OperationsController {
     return this.operations.getClient(identity, workspaceId, clientId);
   }
 
+  @Patch("clients/:clientId")
+  updateClient(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("clientId") clientId: string,
+    @Body() body: unknown,
+  ) {
+    return this.operations.updateClient(
+      identity,
+      workspaceId,
+      clientId,
+      parseBody(UpdateClientSchema, body),
+    );
+  }
+
+  @Delete("clients/:clientId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  archiveClient(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("clientId") clientId: string,
+  ) {
+    return this.operations.archiveClient(identity, workspaceId, clientId);
+  }
+
   @Post("projects")
   createProject(
     @CurrentIdentity() identity: RequestIdentity,
@@ -80,6 +108,42 @@ export class OperationsController {
       workspaceId,
       parseBody(CreateProjectSchema, body),
     );
+  }
+
+  @Get("projects")
+  listProjects(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Query("status") status?: string,
+  ) {
+    return this.operations.listProjects(identity, workspaceId, {
+      status: status ? ProjectStatusSchema.parse(status) : undefined,
+    });
+  }
+
+  @Patch("projects/:projectId")
+  updateProject(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("projectId") projectId: string,
+    @Body() body: unknown,
+  ) {
+    return this.operations.updateProject(
+      identity,
+      workspaceId,
+      projectId,
+      parseBody(UpdateProjectSchema, body),
+    );
+  }
+
+  @Delete("projects/:projectId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  archiveProject(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("projectId") projectId: string,
+  ) {
+    return this.operations.archiveProject(identity, workspaceId, projectId);
   }
 
   @Post("tasks")
@@ -175,6 +239,28 @@ export class OperationsController {
       workspaceId,
       notificationId,
     );
+  }
+
+  @Get("notifications")
+  notifications(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Query("unread") unread?: string,
+  ) {
+    return this.operations.listNotifications(
+      identity,
+      workspaceId,
+      unread === undefined ? undefined : unread === "true",
+    );
+  }
+
+  @Patch("notifications/read-all")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  markAllNotificationsRead(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+  ) {
+    return this.operations.markAllNotificationsRead(identity, workspaceId);
   }
 
   @Get("dashboard")

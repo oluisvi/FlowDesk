@@ -3,8 +3,11 @@ import type {
   ClientStatus,
   CreateProjectInput,
   CreateTaskInput,
+  ProjectStatus,
   UpdateTaskInput,
   TaskStatus,
+  UpdateClientInput,
+  UpdateProjectInput,
 } from "@flowdesk/shared";
 
 export interface ClientRecord extends CreateClientInput {
@@ -80,6 +83,16 @@ export abstract class OperationsRepository {
     workspaceId: string,
     clientId: string,
   ): Promise<ClientRecord | null>;
+  abstract updateClient(
+    workspaceId: string,
+    clientId: string,
+    input: UpdateClientInput,
+  ): Promise<ClientRecord | null>;
+  abstract archiveClient(
+    workspaceId: string,
+    clientId: string,
+    now: Date,
+  ): Promise<boolean>;
   abstract createProject(
     workspaceId: string,
     input: CreateProjectInput,
@@ -88,6 +101,20 @@ export abstract class OperationsRepository {
     workspaceId: string,
     projectId: string,
   ): Promise<ProjectRecord | null>;
+  abstract listProjects(
+    workspaceId: string,
+    filters: { status?: ProjectStatus },
+  ): Promise<ProjectRecord[]>;
+  abstract updateProject(
+    workspaceId: string,
+    projectId: string,
+    input: UpdateProjectInput,
+  ): Promise<ProjectRecord | null>;
+  abstract archiveProject(
+    workspaceId: string,
+    projectId: string,
+    now: Date,
+  ): Promise<boolean>;
   abstract createTask(
     workspaceId: string,
     input: CreateTaskInput,
@@ -140,6 +167,16 @@ export abstract class OperationsRepository {
     notificationId: string,
     now: Date,
   ): Promise<NotificationRecord | null>;
+  abstract listNotifications(
+    workspaceId: string,
+    userId: string,
+    unread?: boolean,
+  ): Promise<NotificationRecord[]>;
+  abstract markAllNotificationsRead(
+    workspaceId: string,
+    userId: string,
+    now: Date,
+  ): Promise<void>;
   abstract dashboard(
     workspaceId: string,
     userId: string,

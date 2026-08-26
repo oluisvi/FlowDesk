@@ -5,6 +5,9 @@ import type {
   CreateProjectInput,
   CreateTaskInput,
   TaskStatus,
+  ProjectStatus,
+  UpdateClientInput,
+  UpdateProjectInput,
   UpdateTaskInput,
 } from "@flowdesk/shared";
 import {
@@ -75,6 +78,28 @@ export class InMemoryOperationsRepository extends OperationsRepository {
     );
   }
 
+  async updateClient(
+    workspaceId: string,
+    clientId: string,
+    input: UpdateClientInput,
+  ): Promise<ClientRecord | null> {
+    const client = await this.findClient(workspaceId, clientId);
+    if (!client) return null;
+    Object.assign(client, input);
+    return client;
+  }
+
+  async archiveClient(
+    workspaceId: string,
+    clientId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const client = await this.findClient(workspaceId, clientId);
+    if (!client) return false;
+    client.archivedAt = now;
+    return true;
+  }
+
   async createProject(
     workspaceId: string,
     input: CreateProjectInput,
@@ -101,6 +126,40 @@ export class InMemoryOperationsRepository extends OperationsRepository {
           !project.archivedAt,
       ) ?? null
     );
+  }
+
+  async listProjects(
+    workspaceId: string,
+    filters: { status?: ProjectStatus },
+  ): Promise<ProjectRecord[]> {
+    return this.projects.filter(
+      (project) =>
+        project.workspaceId === workspaceId &&
+        !project.archivedAt &&
+        (!filters.status || project.status === filters.status),
+    );
+  }
+
+  async updateProject(
+    workspaceId: string,
+    projectId: string,
+    input: UpdateProjectInput,
+  ): Promise<ProjectRecord | null> {
+    const project = await this.findProject(workspaceId, projectId);
+    if (!project) return null;
+    Object.assign(project, input);
+    return project;
+  }
+
+  async archiveProject(
+    workspaceId: string,
+    projectId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const project = await this.findProject(workspaceId, projectId);
+    if (!project) return false;
+    project.archivedAt = now;
+    return true;
   }
 
   async createTask(
@@ -246,6 +305,34 @@ export class InMemoryOperationsRepository extends OperationsRepository {
     if (!notification) return null;
     notification.readAt ??= now;
     return notification;
+  }
+
+  async listNotifications(
+    workspaceId: string,
+    userId: string,
+    unread?: boolean,
+  ): Promise<NotificationRecord[]> {
+    return this.notifications.filter(
+      (notification) =>
+        notification.workspaceId === workspaceId &&
+        notification.userId === userId &&
+        (unread === undefined || (notification.readAt === null) === unread),
+    );
+  }
+
+  async markAllNotificationsRead(
+    workspaceId: string,
+    userId: string,
+    now: Date,
+  ): Promise<void> {
+    for (const notification of this.notifications) {
+      if (
+        notification.workspaceId === workspaceId &&
+        notification.userId === userId &&
+        !notification.readAt
+      )
+        notification.readAt = now;
+    }
   }
 
   async dashboard(

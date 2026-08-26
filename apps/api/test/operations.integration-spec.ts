@@ -176,4 +176,87 @@ describe("workspace operations", () => {
       .expect(200);
     expect(tasks.body).toEqual([]);
   });
+
+  it("updates, lists, and archives clients and projects", async () => {
+    ({ app } = await createIdentityTestApp());
+    const { token, workspaceId } = await registerOwner(app);
+    const client = await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspaceId}/clients`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Studio", status: "ACTIVE" })
+      .expect(201);
+    const project = await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspaceId}/projects`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        name: "Site",
+        clientId: client.body.id,
+        status: "PLANNED",
+        priority: "HIGH",
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/workspaces/${workspaceId}/clients/${client.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Studio Nova" })
+      .expect(200)
+      .expect(({ body }) => expect(body.name).toBe("Studio Nova"));
+    await request(app.getHttpServer())
+      .patch(`/api/v1/workspaces/${workspaceId}/projects/${project.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ status: "ACTIVE" })
+      .expect(200);
+    const projects = await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${workspaceId}/projects?status=ACTIVE`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(projects.body).toHaveLength(1);
+
+    await request(app.getHttpServer())
+      .delete(`/api/v1/workspaces/${workspaceId}/projects/${project.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(204);
+    await request(app.getHttpServer())
+      .delete(`/api/v1/workspaces/${workspaceId}/clients/${client.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(204);
+    await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${workspaceId}/clients`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200)
+      .expect([]);
+  });
+
+  it("lists notifications and marks all of the caller's notifications as read", async () => {
+    const testApp = await createIdentityTestApp();
+    ({ app } = testApp);
+    const { token, workspaceId } = await registerOwner(app);
+    const userId = testApp.repository.userIdByEmail("owner@example.com");
+    for (const title of ["Primeira", "Segunda"]) {
+      await testApp.operations.createNotification({
+        workspaceId,
+        userId,
+        type: "SYSTEM",
+        title,
+        message: title,
+        targetPath: null,
+      });
+    }
+
+    const notifications = await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${workspaceId}/notifications`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(notifications.body).toHaveLength(2);
+    await request(app.getHttpServer())
+      .patch(`/api/v1/workspaces/${workspaceId}/notifications/read-all`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(204);
+    const read = await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${workspaceId}/notifications?unread=true`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(read.body).toEqual([]);
+  });
 });

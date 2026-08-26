@@ -5,6 +5,9 @@ import type {
   CreateProjectInput,
   CreateTaskInput,
   TaskStatus,
+  ProjectStatus,
+  UpdateClientInput,
+  UpdateProjectInput,
   UpdateTaskInput,
 } from "@flowdesk/shared";
 import { PrismaService } from "../common/prisma.service";
@@ -63,6 +66,30 @@ export class PrismaOperationsRepository extends OperationsRepository {
     }) as Promise<ClientRecord | null>;
   }
 
+  async updateClient(
+    workspaceId: string,
+    clientId: string,
+    input: UpdateClientInput,
+  ): Promise<ClientRecord | null> {
+    const result = await this.prisma.client.updateMany({
+      where: { id: clientId, workspaceId, archivedAt: null },
+      data: input,
+    });
+    return result.count ? this.findClient(workspaceId, clientId) : null;
+  }
+
+  async archiveClient(
+    workspaceId: string,
+    clientId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const result = await this.prisma.client.updateMany({
+      where: { id: clientId, workspaceId, archivedAt: null },
+      data: { archivedAt: now },
+    });
+    return result.count > 0;
+  }
+
   createProject(
     workspaceId: string,
     input: CreateProjectInput,
@@ -83,6 +110,43 @@ export class PrismaOperationsRepository extends OperationsRepository {
     return this.prisma.project.findFirst({
       where: { id: projectId, workspaceId, archivedAt: null },
     }) as unknown as Promise<ProjectRecord | null>;
+  }
+
+  listProjects(
+    workspaceId: string,
+    filters: { status?: ProjectStatus },
+  ): Promise<ProjectRecord[]> {
+    return this.prisma.project.findMany({
+      where: { workspaceId, archivedAt: null, status: filters.status },
+      orderBy: { createdAt: "desc" },
+    }) as unknown as Promise<ProjectRecord[]>;
+  }
+
+  async updateProject(
+    workspaceId: string,
+    projectId: string,
+    input: UpdateProjectInput,
+  ): Promise<ProjectRecord | null> {
+    const result = await this.prisma.project.updateMany({
+      where: { id: projectId, workspaceId, archivedAt: null },
+      data: {
+        ...input,
+        deadline: input.deadline ? new Date(input.deadline) : undefined,
+      },
+    });
+    return result.count ? this.findProject(workspaceId, projectId) : null;
+  }
+
+  async archiveProject(
+    workspaceId: string,
+    projectId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const result = await this.prisma.project.updateMany({
+      where: { id: projectId, workspaceId, archivedAt: null },
+      data: { archivedAt: now },
+    });
+    return result.count > 0;
   }
 
   createTask(workspaceId: string, input: CreateTaskInput): Promise<TaskRecord> {
@@ -205,6 +269,33 @@ export class PrismaOperationsRepository extends OperationsRepository {
       where: { id: notificationId, workspaceId, userId },
       data: { readAt: now },
     }) as Promise<NotificationRecord>;
+  }
+
+  listNotifications(
+    workspaceId: string,
+    userId: string,
+    unread?: boolean,
+  ): Promise<NotificationRecord[]> {
+    return this.prisma.notification.findMany({
+      where: {
+        workspaceId,
+        userId,
+        readAt:
+          unread === undefined ? undefined : unread ? null : { not: null },
+      },
+      orderBy: { createdAt: "desc" },
+    }) as Promise<NotificationRecord[]>;
+  }
+
+  async markAllNotificationsRead(
+    workspaceId: string,
+    userId: string,
+    now: Date,
+  ): Promise<void> {
+    await this.prisma.notification.updateMany({
+      where: { workspaceId, userId, readAt: null },
+      data: { readAt: now },
+    });
   }
 
   async dashboard(

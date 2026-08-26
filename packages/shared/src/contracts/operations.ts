@@ -26,6 +26,7 @@ export const CreateClientSchema = z.object({
   status: ClientStatusSchema.default("ACTIVE"),
   assignedMemberId: z.uuid().optional(),
 });
+export const UpdateClientSchema = CreateClientSchema.partial();
 
 export const CreateProjectSchema = z.object({
   name: z.string().trim().min(1).max(160),
@@ -35,6 +36,7 @@ export const CreateProjectSchema = z.object({
   priority: PrioritySchema.default("MEDIUM"),
   deadline: z.iso.datetime().optional(),
 });
+export const UpdateProjectSchema = CreateProjectSchema.partial();
 
 export const CreateTaskSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -52,7 +54,9 @@ export const CreateTaskCommentSchema = z.object({
 });
 
 export type CreateClientInput = z.infer<typeof CreateClientSchema>;
+export type UpdateClientInput = z.infer<typeof UpdateClientSchema>;
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
+export type UpdateProjectInput = z.infer<typeof UpdateProjectSchema>;
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 export type CreateTaskCommentInput = z.infer<typeof CreateTaskCommentSchema>;
 export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
