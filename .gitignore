@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.next/
+apps/web/next-env.d.ts
+coverage/
+test-results/
+.env
+*.tsbuildinfo
