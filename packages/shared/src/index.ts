@@ -16,3 +16,20 @@ export {
   WorkspaceRoleSchema,
 } from "./contracts/workspaces";
 export type { WorkspaceRole } from "./contracts/workspaces";
+export {
+  ClientStatusSchema,
+  CreateClientSchema,
+  CreateProjectSchema,
+  CreateTaskSchema,
+  PrioritySchema,
+  ProjectStatusSchema,
+  TaskStatusSchema,
+  UpdateTaskSchema,
+} from "./contracts/operations";
+export type {
+  CreateClientInput,
+  CreateProjectInput,
+  CreateTaskInput,
+  TaskStatus,
+  UpdateTaskInput,
+} from "./contracts/operations";
