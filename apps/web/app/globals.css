@@ -3,12 +3,27 @@
   font-family: Arial, Helvetica, sans-serif;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-body { margin: 0; background: #f7fafc; color: #172033; }
+body {
+  margin: 0;
+  background: #f7fafc;
+  color: #172033;
+}
 
-main { max-width: 70rem; margin: 0 auto; padding: 2rem; }
+main {
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: 2rem;
+}
 
-header, section { padding: 1.5rem 0; }
+header,
+section {
+  padding: 1.5rem 0;
+}
 
-a { color: #0e7490; }
+a {
+  color: #0e7490;
+}

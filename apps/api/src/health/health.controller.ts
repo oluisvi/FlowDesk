@@ -1,10 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
-import { HealthResponseSchema, type HealthResponse } from '@flowdesk/contracts';
+import { Controller, Get } from "@nestjs/common";
+import { HealthResponseSchema, type HealthResponse } from "@flowdesk/shared";
 
-@Controller('health')
+@Controller("health")
 export class HealthController {
   @Get()
   getHealth(): HealthResponse {
-    return HealthResponseSchema.parse({ status: 'ok' });
+    return HealthResponseSchema.parse({ status: "ok", service: "api" });
   }
 }

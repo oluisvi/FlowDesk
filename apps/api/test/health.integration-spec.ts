@@ -1,16 +1,16 @@
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
-import { createApp } from "../app.factory";
+import { createApp } from "../src/app.factory";
 
-describe("GET /api/v1/health", () => {
+describe("health integration", () => {
   let app: INestApplication | undefined;
 
   afterEach(async () => {
     await app?.close();
   });
 
-  it("returns the shared healthy response", async () => {
+  it("serves the versioned health contract over HTTP", async () => {
     app = await createApp();
     await app.init();
 

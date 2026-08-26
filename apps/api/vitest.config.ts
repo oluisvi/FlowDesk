@@ -1,10 +1,7 @@
-import { defineConfig } from "vitest/config";
 import { resolve } from "node:path";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  test: {
-    include: ["test/**/*.integration-spec.ts"],
-  },
   resolve: {
     alias: {
       "@flowdesk/config": resolve(__dirname, "../../packages/config/src"),

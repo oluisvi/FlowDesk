@@ -1,12 +1,10 @@
-import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
-import { API_VERSION_PREFIX } from '@flowdesk/config';
-import { AppModule } from './app.module';
+import "reflect-metadata";
+import { loadEnvironment } from "@flowdesk/config";
+import { createApp } from "./app.factory";
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix(API_VERSION_PREFIX);
-  await app.listen(process.env.API_PORT ?? 3001);
+  const app = await createApp();
+  await app.listen(loadEnvironment().apiPort);
 }
 
 void bootstrap();
