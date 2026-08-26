@@ -32,8 +32,14 @@ describe("identity HTTP integration", () => {
       .expect(200);
     const rotatedCookie = refreshCookie(rotated);
 
-    await request(app.getHttpServer()).post("/api/v1/auth/refresh").set("Cookie", firstCookie).expect(401);
-    await request(app.getHttpServer()).post("/api/v1/auth/refresh").set("Cookie", rotatedCookie).expect(401);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/refresh")
+      .set("Cookie", firstCookie)
+      .expect(401);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/refresh")
+      .set("Cookie", rotatedCookie)
+      .expect(401);
   });
 
   it("rejects expired invitations and prevents invitation reuse", async () => {
@@ -101,7 +107,10 @@ describe("identity HTTP integration", () => {
       .delete(`/api/v1/auth/sessions/${sessions.body[0].id}`)
       .set("Authorization", `Bearer ${token}`)
       .expect(204);
-    await request(app.getHttpServer()).post("/api/v1/auth/refresh").set("Cookie", cookie).expect(401);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/refresh")
+      .set("Cookie", cookie)
+      .expect(401);
   });
 
   it("uses password reset tokens once and revokes existing sessions", async () => {
@@ -118,10 +127,22 @@ describe("identity HTTP integration", () => {
     const resetToken = recovery.body.resetToken as string;
     const newPassword = "a new correct horse battery staple";
 
-    await request(app.getHttpServer()).post("/api/v1/auth/password-reset").send({ token: resetToken, password: newPassword }).expect(204);
-    await request(app.getHttpServer()).post("/api/v1/auth/password-reset").send({ token: resetToken, password: newPassword }).expect(410);
-    await request(app.getHttpServer()).post("/api/v1/auth/refresh").set("Cookie", cookie).expect(401);
-    await request(app.getHttpServer()).post("/api/v1/auth/login").send({ email: "reset@example.com", password: newPassword }).expect(200);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/password-reset")
+      .send({ token: resetToken, password: newPassword })
+      .expect(204);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/password-reset")
+      .send({ token: resetToken, password: newPassword })
+      .expect(410);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/refresh")
+      .set("Cookie", cookie)
+      .expect(401);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/login")
+      .send({ email: "reset@example.com", password: newPassword })
+      .expect(200);
   });
 
   it("returns the same safe authentication error for unknown email and wrong password", async () => {
@@ -130,8 +151,14 @@ describe("identity HTTP integration", () => {
       .post("/api/v1/auth/register")
       .send({ email: "known@example.com", name: "Known", password })
       .expect(201);
-    const unknown = await request(app.getHttpServer()).post("/api/v1/auth/login").send({ email: "unknown@example.com", password }).expect(401);
-    const wrong = await request(app.getHttpServer()).post("/api/v1/auth/login").send({ email: "known@example.com", password: "wrong" }).expect(401);
+    const unknown = await request(app.getHttpServer())
+      .post("/api/v1/auth/login")
+      .send({ email: "unknown@example.com", password })
+      .expect(401);
+    const wrong = await request(app.getHttpServer())
+      .post("/api/v1/auth/login")
+      .send({ email: "known@example.com", password: "wrong" })
+      .expect(401);
     expect(unknown.body.error.message).toBe("Authentication failed");
     expect(wrong.body.error.message).toBe("Authentication failed");
   });

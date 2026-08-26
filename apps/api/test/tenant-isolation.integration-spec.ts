@@ -33,18 +33,30 @@ describe("workspace tenant isolation", () => {
       .expect(200);
 
     await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceA.body.id}/members/${membersB.body[0].id}`)
+      .get(
+        `/api/v1/workspaces/${workspaceA.body.id}/members/${membersB.body[0].id}`,
+      )
       .set("Authorization", `Bearer ${token}`)
       .expect(404);
   });
 
   it("enforces role changes and workspace mutation through centralized access", async () => {
     ({ app } = await createIdentityTestApp());
-    const owner = await request(app.getHttpServer()).post("/api/v1/auth/register").send({ email: "owner@example.com", name: "Owner", password }).expect(201);
-    const member = await request(app.getHttpServer()).post("/api/v1/auth/register").send({ email: "member@example.com", name: "Member", password }).expect(201);
+    const owner = await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({ email: "owner@example.com", name: "Owner", password })
+      .expect(201);
+    const member = await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({ email: "member@example.com", name: "Member", password })
+      .expect(201);
     const ownerToken = owner.body.accessToken as string;
     const memberToken = member.body.accessToken as string;
-    const workspace = await request(app.getHttpServer()).post("/api/v1/workspaces").set("Authorization", `Bearer ${ownerToken}`).send({ name: "Studio" }).expect(201);
+    const workspace = await request(app.getHttpServer())
+      .post("/api/v1/workspaces")
+      .set("Authorization", `Bearer ${ownerToken}`)
+      .send({ name: "Studio" })
+      .expect(201);
     const invitation = await request(app.getHttpServer())
       .post(`/api/v1/workspaces/${workspace.body.id}/invitations`)
       .set("Authorization", `Bearer ${ownerToken}`)
@@ -62,7 +74,9 @@ describe("workspace tenant isolation", () => {
       .send({ name: "Escalated" })
       .expect(403);
     await request(app.getHttpServer())
-      .patch(`/api/v1/workspaces/${workspace.body.id}/members/${accepted.body.id}`)
+      .patch(
+        `/api/v1/workspaces/${workspace.body.id}/members/${accepted.body.id}`,
+      )
       .set("Authorization", `Bearer ${ownerToken}`)
       .send({ role: "VIEWER" })
       .expect(200);
@@ -79,16 +93,43 @@ describe("workspace tenant isolation", () => {
 
   it("prevents the sole owner from leaving and removes ordinary members cleanly", async () => {
     ({ app } = await createIdentityTestApp());
-    const owner = await request(app.getHttpServer()).post("/api/v1/auth/register").send({ email: "owner@example.com", name: "Owner", password }).expect(201);
-    const member = await request(app.getHttpServer()).post("/api/v1/auth/register").send({ email: "member@example.com", name: "Member", password }).expect(201);
+    const owner = await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({ email: "owner@example.com", name: "Owner", password })
+      .expect(201);
+    const member = await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({ email: "member@example.com", name: "Member", password })
+      .expect(201);
     const ownerToken = owner.body.accessToken as string;
     const memberToken = member.body.accessToken as string;
-    const workspace = await request(app.getHttpServer()).post("/api/v1/workspaces").set("Authorization", `Bearer ${ownerToken}`).send({ name: "Studio" }).expect(201);
-    const invitation = await request(app.getHttpServer()).post(`/api/v1/workspaces/${workspace.body.id}/invitations`).set("Authorization", `Bearer ${ownerToken}`).send({ email: "member@example.com", role: "MEMBER" }).expect(201);
-    await request(app.getHttpServer()).post("/api/v1/invitations/accept").set("Authorization", `Bearer ${memberToken}`).send({ token: invitation.body.token }).expect(200);
+    const workspace = await request(app.getHttpServer())
+      .post("/api/v1/workspaces")
+      .set("Authorization", `Bearer ${ownerToken}`)
+      .send({ name: "Studio" })
+      .expect(201);
+    const invitation = await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspace.body.id}/invitations`)
+      .set("Authorization", `Bearer ${ownerToken}`)
+      .send({ email: "member@example.com", role: "MEMBER" })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post("/api/v1/invitations/accept")
+      .set("Authorization", `Bearer ${memberToken}`)
+      .send({ token: invitation.body.token })
+      .expect(200);
 
-    await request(app.getHttpServer()).post(`/api/v1/workspaces/${workspace.body.id}/leave`).set("Authorization", `Bearer ${ownerToken}`).expect(403);
-    await request(app.getHttpServer()).post(`/api/v1/workspaces/${workspace.body.id}/leave`).set("Authorization", `Bearer ${memberToken}`).expect(204);
-    await request(app.getHttpServer()).post(`/api/v1/workspaces/${workspace.body.id}/switch`).set("Authorization", `Bearer ${memberToken}`).expect(404);
+    await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspace.body.id}/leave`)
+      .set("Authorization", `Bearer ${ownerToken}`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspace.body.id}/leave`)
+      .set("Authorization", `Bearer ${memberToken}`)
+      .expect(204);
+    await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspace.body.id}/switch`)
+      .set("Authorization", `Bearer ${memberToken}`)
+      .expect(404);
   });
 });
