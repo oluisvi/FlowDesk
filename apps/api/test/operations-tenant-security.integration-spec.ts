@@ -74,4 +74,40 @@ describe("operations tenant security", () => {
       .set("Authorization", `Bearer ${token}`)
       .expect(404);
   });
+
+  it("rejects a project member from another workspace", async () => {
+    ({ app } = await createIdentityTestApp());
+    const registration = await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({ email: "owner@example.com", name: "Owner", password })
+      .expect(201);
+    const token = registration.body.accessToken as string;
+    const workspaceA = await request(app.getHttpServer())
+      .post("/api/v1/workspaces")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Workspace A" })
+      .expect(201);
+    const workspaceB = await request(app.getHttpServer())
+      .post("/api/v1/workspaces")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Workspace B" })
+      .expect(201);
+    const project = await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspaceA.body.id}/projects`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Projeto A", status: "ACTIVE", priority: "MEDIUM" })
+      .expect(201);
+    const membersB = await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${workspaceB.body.id}/members`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/workspaces/${workspaceA.body.id}/projects/${project.body.id}/members`,
+      )
+      .set("Authorization", `Bearer ${token}`)
+      .send({ membershipId: membersB.body[0].id })
+      .expect(422);
+  });
 });

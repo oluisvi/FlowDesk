@@ -17,6 +17,7 @@ export {
 } from "./contracts/workspaces";
 export type { WorkspaceRole } from "./contracts/workspaces";
 export {
+  AssignProjectMemberSchema,
   ClientStatusSchema,
   CreateClientSchema,
   CreateProjectSchema,

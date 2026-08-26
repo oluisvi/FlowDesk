@@ -18,6 +18,7 @@ import {
   type DashboardSummary,
   type NotificationRecord,
   type ProjectRecord,
+  type ProjectMemberRecord,
   type TaskCommentRecord,
   type TaskRecord,
 } from "./operations.repository";
@@ -145,6 +146,39 @@ export class PrismaOperationsRepository extends OperationsRepository {
     const result = await this.prisma.project.updateMany({
       where: { id: projectId, workspaceId, archivedAt: null },
       data: { archivedAt: now },
+    });
+    return result.count > 0;
+  }
+
+  assignProjectMember(
+    workspaceId: string,
+    projectId: string,
+    membershipId: string,
+  ): Promise<ProjectMemberRecord> {
+    return this.prisma.projectMember.upsert({
+      where: { projectId_membershipId: { projectId, membershipId } },
+      create: { workspaceId, projectId, membershipId },
+      update: {},
+    });
+  }
+
+  listProjectMembers(
+    workspaceId: string,
+    projectId: string,
+  ): Promise<ProjectMemberRecord[]> {
+    return this.prisma.projectMember.findMany({
+      where: { workspaceId, projectId },
+      orderBy: { createdAt: "asc" },
+    });
+  }
+
+  async removeProjectMember(
+    workspaceId: string,
+    projectId: string,
+    membershipId: string,
+  ): Promise<boolean> {
+    const result = await this.prisma.projectMember.deleteMany({
+      where: { workspaceId, projectId, membershipId },
     });
     return result.count > 0;
   }

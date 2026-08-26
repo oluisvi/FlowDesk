@@ -51,6 +51,14 @@ export interface TaskCommentRecord {
   updatedAt: Date;
 }
 
+export interface ProjectMemberRecord {
+  id: string;
+  workspaceId: string;
+  projectId: string;
+  membershipId: string;
+  createdAt: Date;
+}
+
 export interface NotificationRecord {
   id: string;
   workspaceId: string;
@@ -114,6 +122,20 @@ export abstract class OperationsRepository {
     workspaceId: string,
     projectId: string,
     now: Date,
+  ): Promise<boolean>;
+  abstract assignProjectMember(
+    workspaceId: string,
+    projectId: string,
+    membershipId: string,
+  ): Promise<ProjectMemberRecord>;
+  abstract listProjectMembers(
+    workspaceId: string,
+    projectId: string,
+  ): Promise<ProjectMemberRecord[]>;
+  abstract removeProjectMember(
+    workspaceId: string,
+    projectId: string,
+    membershipId: string,
   ): Promise<boolean>;
   abstract createTask(
     workspaceId: string,

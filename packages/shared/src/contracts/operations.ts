@@ -52,6 +52,7 @@ export const UpdateTaskSchema = CreateTaskSchema.partial();
 export const CreateTaskCommentSchema = z.object({
   content: z.string().trim().min(1).max(5_000),
 });
+export const AssignProjectMemberSchema = z.object({ membershipId: z.uuid() });
 
 export type CreateClientInput = z.infer<typeof CreateClientSchema>;
 export type UpdateClientInput = z.infer<typeof UpdateClientSchema>;

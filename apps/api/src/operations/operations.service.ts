@@ -39,7 +39,9 @@ export class OperationsService {
     this.policy.assert(access, "operations:write");
     if (input.assignedMemberId)
       await this.assertMembership(workspaceId, input.assignedMemberId);
-    return this.repository.createClient(workspaceId, input);
+    const client = await this.repository.createClient(workspaceId, input);
+    await this.recordCreation(identity, workspaceId, "CLIENT", client.id, "client.created");
+    return client;
   }
 
   async listClients(
@@ -109,7 +111,9 @@ export class OperationsService {
         "Client does not belong to workspace",
       );
     }
-    return this.repository.createProject(workspaceId, input);
+    const project = await this.repository.createProject(workspaceId, input);
+    await this.recordCreation(identity, workspaceId, "PROJECT", project.id, "project.created");
+    return project;
   }
 
   async listProjects(
@@ -163,6 +167,53 @@ export class OperationsService {
       throw new NotFoundException("Project not found");
   }
 
+  async assignProjectMember(
+    identity: RequestIdentity,
+    workspaceId: string,
+    projectId: string,
+    membershipId: string,
+  ) {
+    const access = await this.access.resolve(identity, workspaceId);
+    this.policy.assert(access, "operations:write");
+    if (!(await this.repository.findProject(workspaceId, projectId)))
+      throw new NotFoundException("Project not found");
+    await this.assertMembership(workspaceId, membershipId);
+    return this.repository.assignProjectMember(
+      workspaceId,
+      projectId,
+      membershipId,
+    );
+  }
+
+  async listProjectMembers(
+    identity: RequestIdentity,
+    workspaceId: string,
+    projectId: string,
+  ) {
+    await this.access.resolve(identity, workspaceId);
+    if (!(await this.repository.findProject(workspaceId, projectId)))
+      throw new NotFoundException("Project not found");
+    return this.repository.listProjectMembers(workspaceId, projectId);
+  }
+
+  async removeProjectMember(
+    identity: RequestIdentity,
+    workspaceId: string,
+    projectId: string,
+    membershipId: string,
+  ): Promise<void> {
+    const access = await this.access.resolve(identity, workspaceId);
+    this.policy.assert(access, "operations:write");
+    if (
+      !(await this.repository.removeProjectMember(
+        workspaceId,
+        projectId,
+        membershipId,
+      ))
+    )
+      throw new NotFoundException("Project member not found");
+  }
+
   async createTask(
     identity: RequestIdentity,
     workspaceId: string,
@@ -180,7 +231,9 @@ export class OperationsService {
     }
     if (input.assigneeId)
       await this.assertMembership(workspaceId, input.assigneeId);
-    return this.repository.createTask(workspaceId, input);
+    const task = await this.repository.createTask(workspaceId, input);
+    await this.recordCreation(identity, workspaceId, "TASK", task.id, "task.created");
+    return task;
   }
 
   async listTasks(
@@ -335,5 +388,22 @@ export class OperationsService {
         "Member does not belong to workspace",
       );
     }
+  }
+
+  private async recordCreation(
+    identity: RequestIdentity,
+    workspaceId: string,
+    entityType: "CLIENT" | "PROJECT" | "TASK",
+    entityId: string,
+    action: string,
+  ): Promise<void> {
+    await this.repository.recordActivity({
+      workspaceId,
+      actorId: identity.userId,
+      actorType: "USER",
+      entityType,
+      entityId,
+      action,
+    });
   }
 }

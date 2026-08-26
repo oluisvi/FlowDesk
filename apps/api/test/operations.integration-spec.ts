@@ -259,4 +259,55 @@ describe("workspace operations", () => {
       .expect(200);
     expect(read.body).toEqual([]);
   });
+
+  it("assigns and removes a workspace member from a project", async () => {
+    ({ app } = await createIdentityTestApp());
+    const { token, workspaceId } = await registerOwner(app);
+    const project = await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspaceId}/projects`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Portal", status: "ACTIVE", priority: "MEDIUM" })
+      .expect(201);
+    const members = await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${workspaceId}/members`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/workspaces/${workspaceId}/projects/${project.body.id}/members`,
+      )
+      .set("Authorization", `Bearer ${token}`)
+      .send({ membershipId: members.body[0].id })
+      .expect(201);
+    const assigned = await request(app.getHttpServer())
+      .get(
+        `/api/v1/workspaces/${workspaceId}/projects/${project.body.id}/members`,
+      )
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(assigned.body).toHaveLength(1);
+
+    await request(app.getHttpServer())
+      .delete(
+        `/api/v1/workspaces/${workspaceId}/projects/${project.body.id}/members/${members.body[0].id}`,
+      )
+      .set("Authorization", `Bearer ${token}`)
+      .expect(204);
+  });
+
+  it("records creation activity for operational entities", async () => {
+    ({ app } = await createIdentityTestApp());
+    const { token, workspaceId } = await registerOwner(app);
+    const client = await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspaceId}/clients`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Nova", status: "ACTIVE" })
+      .expect(201);
+    const activity = await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${workspaceId}/activity?entityId=${client.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(activity.body[0]).toMatchObject({ action: "client.created", actorType: "USER" });
+  });
 });

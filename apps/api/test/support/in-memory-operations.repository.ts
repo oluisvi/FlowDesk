@@ -17,6 +17,7 @@ import {
   type DashboardSummary,
   type NotificationRecord,
   type ProjectRecord,
+  type ProjectMemberRecord,
   type TaskCommentRecord,
   type TaskRecord,
 } from "../../src/operations/operations.repository";
@@ -29,6 +30,7 @@ export class InMemoryOperationsRepository extends OperationsRepository {
   private readonly activities: ActivityRecord[] = [];
   private readonly comments: TaskCommentRecord[] = [];
   private readonly notifications: NotificationRecord[] = [];
+  private readonly projectMembers: ProjectMemberRecord[] = [];
 
   constructor(private readonly identity: InMemoryIdentityRepository) {
     super();
@@ -159,6 +161,53 @@ export class InMemoryOperationsRepository extends OperationsRepository {
     const project = await this.findProject(workspaceId, projectId);
     if (!project) return false;
     project.archivedAt = now;
+    return true;
+  }
+
+  async assignProjectMember(
+    workspaceId: string,
+    projectId: string,
+    membershipId: string,
+  ): Promise<ProjectMemberRecord> {
+    const existing = this.projectMembers.find(
+      (member) =>
+        member.projectId === projectId && member.membershipId === membershipId,
+    );
+    if (existing) return existing;
+    const record = {
+      id: randomUUID(),
+      workspaceId,
+      projectId,
+      membershipId,
+      createdAt: new Date(),
+    };
+    this.projectMembers.push(record);
+    return record;
+  }
+
+  async listProjectMembers(
+    workspaceId: string,
+    projectId: string,
+  ): Promise<ProjectMemberRecord[]> {
+    return this.projectMembers.filter(
+      (member) =>
+        member.workspaceId === workspaceId && member.projectId === projectId,
+    );
+  }
+
+  async removeProjectMember(
+    workspaceId: string,
+    projectId: string,
+    membershipId: string,
+  ): Promise<boolean> {
+    const index = this.projectMembers.findIndex(
+      (member) =>
+        member.workspaceId === workspaceId &&
+        member.projectId === projectId &&
+        member.membershipId === membershipId,
+    );
+    if (index < 0) return false;
+    this.projectMembers.splice(index, 1);
     return true;
   }
 

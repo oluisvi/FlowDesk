@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  AssignProjectMemberSchema,
   CreateClientSchema,
   ClientStatusSchema,
   CreateProjectSchema,
@@ -144,6 +145,46 @@ export class OperationsController {
     @Param("projectId") projectId: string,
   ) {
     return this.operations.archiveProject(identity, workspaceId, projectId);
+  }
+
+  @Post("projects/:projectId/members")
+  assignProjectMember(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("projectId") projectId: string,
+    @Body() body: unknown,
+  ) {
+    return this.operations.assignProjectMember(
+      identity,
+      workspaceId,
+      projectId,
+      parseBody(AssignProjectMemberSchema, body).membershipId,
+    );
+  }
+
+  @Get("projects/:projectId/members")
+  projectMembers(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("projectId") projectId: string,
+  ) {
+    return this.operations.listProjectMembers(identity, workspaceId, projectId);
+  }
+
+  @Delete("projects/:projectId/members/:membershipId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeProjectMember(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("projectId") projectId: string,
+    @Param("membershipId") membershipId: string,
+  ) {
+    return this.operations.removeProjectMember(
+      identity,
+      workspaceId,
+      projectId,
+      membershipId,
+    );
   }
 
   @Post("tasks")
