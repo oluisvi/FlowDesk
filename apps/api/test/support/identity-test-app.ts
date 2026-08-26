@@ -10,6 +10,7 @@ import { InMemoryOperationsRepository } from "./in-memory-operations.repository"
 export interface IdentityTestApp {
   app: INestApplication;
   repository: InMemoryIdentityRepository;
+  operations: InMemoryOperationsRepository;
 }
 
 export async function createIdentityTestApp(
@@ -28,5 +29,5 @@ export async function createIdentityTestApp(
   const app = moduleRef.createNestApplication();
   configureApp(app);
   await app.init();
-  return { app, repository };
+  return { app, repository, operations };
 }

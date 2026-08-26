@@ -10,7 +10,10 @@ import {
   OperationsRepository,
   type ActivityRecord,
   type ClientRecord,
+  type DashboardSummary,
+  type NotificationRecord,
   type ProjectRecord,
+  type TaskCommentRecord,
   type TaskRecord,
 } from "./operations.repository";
 
@@ -117,5 +120,74 @@ export class PrismaOperationsRepository extends OperationsRepository {
       where: { workspaceId, entityId },
       orderBy: { createdAt: "desc" },
     }) as Promise<ActivityRecord[]>;
+  }
+
+  createComment(input: {
+    workspaceId: string;
+    taskId: string;
+    authorId: string;
+    content: string;
+  }): Promise<TaskCommentRecord> {
+    return this.prisma.taskComment.create({
+      data: input,
+    }) as Promise<TaskCommentRecord>;
+  }
+
+  listComments(
+    workspaceId: string,
+    taskId: string,
+  ): Promise<TaskCommentRecord[]> {
+    return this.prisma.taskComment.findMany({
+      where: { workspaceId, taskId },
+      orderBy: { createdAt: "asc" },
+    }) as Promise<TaskCommentRecord[]>;
+  }
+
+  createNotification(
+    input: Omit<NotificationRecord, "id" | "readAt" | "createdAt">,
+  ): Promise<NotificationRecord> {
+    return this.prisma.notification.create({
+      data: input,
+    }) as Promise<NotificationRecord>;
+  }
+
+  markNotificationRead(
+    workspaceId: string,
+    userId: string,
+    notificationId: string,
+    now: Date,
+  ): Promise<NotificationRecord | null> {
+    return this.prisma.notification.update({
+      where: { id: notificationId, workspaceId, userId },
+      data: { readAt: now },
+    }) as Promise<NotificationRecord>;
+  }
+
+  async dashboard(
+    workspaceId: string,
+    userId: string,
+  ): Promise<DashboardSummary> {
+    const [total, completed, activeClients, activeProjects, unread] =
+      await Promise.all([
+        this.prisma.task.count({ where: { workspaceId, archivedAt: null } }),
+        this.prisma.task.count({
+          where: { workspaceId, archivedAt: null, status: "DONE" },
+        }),
+        this.prisma.client.count({
+          where: { workspaceId, archivedAt: null, status: "ACTIVE" },
+        }),
+        this.prisma.project.count({
+          where: { workspaceId, archivedAt: null, status: "ACTIVE" },
+        }),
+        this.prisma.notification.count({
+          where: { workspaceId, userId, readAt: null },
+        }),
+      ]);
+    return {
+      tasks: { total, completed, pending: total - completed },
+      clients: { active: activeClients },
+      projects: { active: activeProjects },
+      notifications: { unread },
+    };
   }
 }

@@ -13,6 +13,7 @@ import {
   CreateClientSchema,
   CreateProjectSchema,
   CreateTaskSchema,
+  CreateTaskCommentSchema,
   UpdateTaskSchema,
 } from "@flowdesk/shared";
 import { AccessGuard } from "../auth/access.guard";
@@ -98,5 +99,50 @@ export class OperationsController {
     @Query("entityId") entityId?: string,
   ) {
     return this.operations.listActivity(identity, workspaceId, entityId);
+  }
+
+  @Post("tasks/:taskId/comments")
+  createComment(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("taskId") taskId: string,
+    @Body() body: unknown,
+  ) {
+    return this.operations.createComment(
+      identity,
+      workspaceId,
+      taskId,
+      parseBody(CreateTaskCommentSchema, body).content,
+    );
+  }
+
+  @Get("tasks/:taskId/comments")
+  comments(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("taskId") taskId: string,
+  ) {
+    return this.operations.listComments(identity, workspaceId, taskId);
+  }
+
+  @Patch("notifications/:notificationId/read")
+  markNotificationRead(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("notificationId") notificationId: string,
+  ) {
+    return this.operations.markNotificationRead(
+      identity,
+      workspaceId,
+      notificationId,
+    );
+  }
+
+  @Get("dashboard")
+  dashboard(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+  ) {
+    return this.operations.dashboard(identity, workspaceId);
   }
 }

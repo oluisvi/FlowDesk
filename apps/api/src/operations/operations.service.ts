@@ -134,6 +134,56 @@ export class OperationsService {
     return this.repository.listActivity(workspaceId, entityId);
   }
 
+  async createComment(
+    identity: RequestIdentity,
+    workspaceId: string,
+    taskId: string,
+    content: string,
+  ) {
+    const access = await this.access.resolve(identity, workspaceId);
+    this.policy.assert(access, "operations:write");
+    if (!(await this.repository.findTask(workspaceId, taskId)))
+      throw new NotFoundException("Task not found");
+    return this.repository.createComment({
+      workspaceId,
+      taskId,
+      authorId: identity.userId,
+      content,
+    });
+  }
+
+  async listComments(
+    identity: RequestIdentity,
+    workspaceId: string,
+    taskId: string,
+  ) {
+    await this.access.resolve(identity, workspaceId);
+    if (!(await this.repository.findTask(workspaceId, taskId)))
+      throw new NotFoundException("Task not found");
+    return this.repository.listComments(workspaceId, taskId);
+  }
+
+  async markNotificationRead(
+    identity: RequestIdentity,
+    workspaceId: string,
+    notificationId: string,
+  ) {
+    await this.access.resolve(identity, workspaceId);
+    const notification = await this.repository.markNotificationRead(
+      workspaceId,
+      identity.userId,
+      notificationId,
+      new Date(),
+    );
+    if (!notification) throw new NotFoundException("Notification not found");
+    return notification;
+  }
+
+  async dashboard(identity: RequestIdentity, workspaceId: string) {
+    await this.access.resolve(identity, workspaceId);
+    return this.repository.dashboard(workspaceId, identity.userId);
+  }
+
   private async assertMembership(
     workspaceId: string,
     membershipId: string,

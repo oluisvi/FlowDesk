@@ -20,6 +20,7 @@ export {
   ClientStatusSchema,
   CreateClientSchema,
   CreateProjectSchema,
+  CreateTaskCommentSchema,
   CreateTaskSchema,
   PrioritySchema,
   ProjectStatusSchema,
@@ -29,6 +30,7 @@ export {
 export type {
   CreateClientInput,
   CreateProjectInput,
+  CreateTaskCommentInput,
   CreateTaskInput,
   TaskStatus,
   UpdateTaskInput,

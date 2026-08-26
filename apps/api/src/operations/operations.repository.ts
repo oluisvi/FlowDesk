@@ -36,6 +36,35 @@ export interface ActivityRecord {
   createdAt: Date;
 }
 
+export interface TaskCommentRecord {
+  id: string;
+  workspaceId: string;
+  taskId: string;
+  authorId: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface NotificationRecord {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  targetPath: string | null;
+  readAt: Date | null;
+  createdAt: Date;
+}
+
+export interface DashboardSummary {
+  tasks: { total: number; completed: number; pending: number };
+  clients: { active: number };
+  projects: { active: number };
+  notifications: { unread: number };
+}
+
 export abstract class OperationsRepository {
   abstract createClient(
     workspaceId: string,
@@ -77,4 +106,27 @@ export abstract class OperationsRepository {
     workspaceId: string,
     entityId?: string,
   ): Promise<ActivityRecord[]>;
+  abstract createComment(input: {
+    workspaceId: string;
+    taskId: string;
+    authorId: string;
+    content: string;
+  }): Promise<TaskCommentRecord>;
+  abstract listComments(
+    workspaceId: string,
+    taskId: string,
+  ): Promise<TaskCommentRecord[]>;
+  abstract createNotification(
+    input: Omit<NotificationRecord, "id" | "readAt" | "createdAt">,
+  ): Promise<NotificationRecord>;
+  abstract markNotificationRead(
+    workspaceId: string,
+    userId: string,
+    notificationId: string,
+    now: Date,
+  ): Promise<NotificationRecord | null>;
+  abstract dashboard(
+    workspaceId: string,
+    userId: string,
+  ): Promise<DashboardSummary>;
 }

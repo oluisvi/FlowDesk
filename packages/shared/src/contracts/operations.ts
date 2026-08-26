@@ -47,9 +47,13 @@ export const CreateTaskSchema = z.object({
 });
 
 export const UpdateTaskSchema = CreateTaskSchema.partial();
+export const CreateTaskCommentSchema = z.object({
+  content: z.string().trim().min(1).max(5_000),
+});
 
 export type CreateClientInput = z.infer<typeof CreateClientSchema>;
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
+export type CreateTaskCommentInput = z.infer<typeof CreateTaskCommentSchema>;
 export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;

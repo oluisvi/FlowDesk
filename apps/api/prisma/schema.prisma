@@ -65,6 +65,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   memberships         Membership[]
   invitationsSent     WorkspaceInvitation[] @relation("InvitationSender")
+  comments            TaskComment[]
+  notifications       Notification[]
 }
 
 model Session {
@@ -97,17 +99,19 @@ model PasswordResetToken {
 }
 
 model Workspace {
-  id          String                @id @default(uuid()) @db.Uuid
-  name        String                @db.VarChar(100)
-  slug        String                @unique @db.VarChar(140)
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  memberships Membership[]
-  invitations WorkspaceInvitation[]
-  clients     Client[]
-  projects    Project[]
-  tasks       Task[]
-  activities  Activity[]
+  id            String                @id @default(uuid()) @db.Uuid
+  name          String                @db.VarChar(100)
+  slug          String                @unique @db.VarChar(140)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  memberships   Membership[]
+  invitations   WorkspaceInvitation[]
+  clients       Client[]
+  projects      Project[]
+  tasks         Task[]
+  activities    Activity[]
+  comments      TaskComment[]
+  notifications Notification[]
 }
 
 model Membership {
@@ -167,25 +171,57 @@ model Project {
 }
 
 model Task {
-  id          String      @id @default(uuid()) @db.Uuid
-  workspaceId String      @db.Uuid
-  projectId   String?     @db.Uuid
-  assigneeId  String?     @db.Uuid
-  title       String      @db.VarChar(200)
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @db.Uuid
+  projectId   String?       @db.Uuid
+  assigneeId  String?       @db.Uuid
+  title       String        @db.VarChar(200)
   description String?
-  status      TaskStatus  @default(BACKLOG)
-  priority    Priority    @default(MEDIUM)
+  status      TaskStatus    @default(BACKLOG)
+  priority    Priority      @default(MEDIUM)
   dueDate     DateTime?
   archivedAt  DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project     Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  assignee    Membership? @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignee    Membership?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  comments    TaskComment[]
 
   @@index([workspaceId, status, archivedAt])
   @@index([workspaceId, projectId])
   @@index([workspaceId, assigneeId])
+}
+
+model TaskComment {
+  id          String    @id @default(uuid()) @db.Uuid
+  workspaceId String    @db.Uuid
+  taskId      String    @db.Uuid
+  authorId    String    @db.Uuid
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, taskId, createdAt])
+}
+
+model Notification {
+  id          String    @id @default(uuid()) @db.Uuid
+  workspaceId String    @db.Uuid
+  userId      String    @db.Uuid
+  type        String    @db.VarChar(80)
+  title       String    @db.VarChar(160)
+  message     String    @db.VarChar(500)
+  targetPath  String?   @db.VarChar(500)
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, userId, readAt, createdAt])
 }
 
 model Activity {

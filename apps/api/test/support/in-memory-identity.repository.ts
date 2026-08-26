@@ -342,4 +342,10 @@ export class InMemoryIdentityRepository extends IdentityRepository {
         membership.id === membershipId,
     );
   }
+
+  userIdByEmail(email: string): string {
+    const user = this.users.find((candidate) => candidate.email === email);
+    if (!user) throw new Error("user not found");
+    return user.id;
+  }
 }

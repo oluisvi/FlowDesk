@@ -9,7 +9,10 @@ import {
   OperationsRepository,
   type ActivityRecord,
   type ClientRecord,
+  type DashboardSummary,
+  type NotificationRecord,
   type ProjectRecord,
+  type TaskCommentRecord,
   type TaskRecord,
 } from "../../src/operations/operations.repository";
 import type { InMemoryIdentityRepository } from "./in-memory-identity.repository";
@@ -19,6 +22,8 @@ export class InMemoryOperationsRepository extends OperationsRepository {
   private readonly projects: ProjectRecord[] = [];
   private readonly tasks: TaskRecord[] = [];
   private readonly activities: ActivityRecord[] = [];
+  private readonly comments: TaskCommentRecord[] = [];
+  private readonly notifications: NotificationRecord[] = [];
 
   constructor(private readonly identity: InMemoryIdentityRepository) {
     super();
@@ -143,5 +148,102 @@ export class InMemoryOperationsRepository extends OperationsRepository {
         activity.workspaceId === workspaceId &&
         (!entityId || activity.entityId === entityId),
     );
+  }
+
+  async createComment(input: {
+    workspaceId: string;
+    taskId: string;
+    authorId: string;
+    content: string;
+  }): Promise<TaskCommentRecord> {
+    const now = new Date();
+    const record = {
+      id: randomUUID(),
+      ...input,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.comments.push(record);
+    return record;
+  }
+
+  async listComments(
+    workspaceId: string,
+    taskId: string,
+  ): Promise<TaskCommentRecord[]> {
+    return this.comments.filter(
+      (comment) =>
+        comment.workspaceId === workspaceId && comment.taskId === taskId,
+    );
+  }
+
+  async createNotification(
+    input: Omit<NotificationRecord, "id" | "readAt" | "createdAt">,
+  ): Promise<NotificationRecord> {
+    const record = {
+      id: randomUUID(),
+      ...input,
+      readAt: null,
+      createdAt: new Date(),
+    };
+    this.notifications.unshift(record);
+    return record;
+  }
+
+  async markNotificationRead(
+    workspaceId: string,
+    userId: string,
+    notificationId: string,
+    now: Date,
+  ): Promise<NotificationRecord | null> {
+    const notification = this.notifications.find(
+      (candidate) =>
+        candidate.id === notificationId &&
+        candidate.workspaceId === workspaceId &&
+        candidate.userId === userId,
+    );
+    if (!notification) return null;
+    notification.readAt ??= now;
+    return notification;
+  }
+
+  async dashboard(
+    workspaceId: string,
+    userId: string,
+  ): Promise<DashboardSummary> {
+    const tasks = this.tasks.filter(
+      (task) => task.workspaceId === workspaceId && !task.archivedAt,
+    );
+    return {
+      tasks: {
+        total: tasks.length,
+        completed: tasks.filter((task) => task.status === "DONE").length,
+        pending: tasks.filter((task) => task.status !== "DONE").length,
+      },
+      clients: {
+        active: this.clients.filter(
+          (client) =>
+            client.workspaceId === workspaceId &&
+            client.status === "ACTIVE" &&
+            !client.archivedAt,
+        ).length,
+      },
+      projects: {
+        active: this.projects.filter(
+          (project) =>
+            project.workspaceId === workspaceId &&
+            project.status === "ACTIVE" &&
+            !project.archivedAt,
+        ).length,
+      },
+      notifications: {
+        unread: this.notifications.filter(
+          (notification) =>
+            notification.workspaceId === workspaceId &&
+            notification.userId === userId &&
+            !notification.readAt,
+        ).length,
+      },
+    };
   }
 }
