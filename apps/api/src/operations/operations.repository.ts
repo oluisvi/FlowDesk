@@ -1,8 +1,10 @@
 import type {
   CreateClientInput,
+  ClientStatus,
   CreateProjectInput,
   CreateTaskInput,
   UpdateTaskInput,
+  TaskStatus,
 } from "@flowdesk/shared";
 
 export interface ClientRecord extends CreateClientInput {
@@ -66,6 +68,10 @@ export interface DashboardSummary {
 }
 
 export abstract class OperationsRepository {
+  abstract listClients(
+    workspaceId: string,
+    filters: { search?: string; status?: ClientStatus },
+  ): Promise<ClientRecord[]>;
   abstract createClient(
     workspaceId: string,
     input: CreateClientInput,
@@ -86,6 +92,10 @@ export abstract class OperationsRepository {
     workspaceId: string,
     input: CreateTaskInput,
   ): Promise<TaskRecord>;
+  abstract listTasks(
+    workspaceId: string,
+    filters: { status?: TaskStatus },
+  ): Promise<TaskRecord[]>;
   abstract findTask(
     workspaceId: string,
     taskId: string,
@@ -95,6 +105,11 @@ export abstract class OperationsRepository {
     taskId: string,
     input: UpdateTaskInput,
   ): Promise<TaskRecord | null>;
+  abstract archiveTask(
+    workspaceId: string,
+    taskId: string,
+    now: Date,
+  ): Promise<boolean>;
   abstract membershipExists(
     workspaceId: string,
     membershipId: string,

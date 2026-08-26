@@ -142,4 +142,38 @@ describe("workspace operations", () => {
       tasks: { total: 1, completed: 1, pending: 0 },
     });
   });
+
+  it("searches clients and excludes archived tasks from filtered lists", async () => {
+    ({ app } = await createIdentityTestApp());
+    const { token, workspaceId, taskId } = await createTaskFixture(app);
+    await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspaceId}/clients`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Studio Nova", company: "Nova Design", status: "ACTIVE" })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${workspaceId}/clients`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Acme", status: "INACTIVE" })
+      .expect(201);
+
+    const clients = await request(app.getHttpServer())
+      .get(
+        `/api/v1/workspaces/${workspaceId}/clients?search=nova&status=ACTIVE`,
+      )
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(clients.body).toHaveLength(1);
+    expect(clients.body[0].name).toBe("Studio Nova");
+
+    await request(app.getHttpServer())
+      .delete(`/api/v1/workspaces/${workspaceId}/tasks/${taskId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(204);
+    const tasks = await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${workspaceId}/tasks?status=TODO`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(tasks.body).toEqual([]);
+  });
 });

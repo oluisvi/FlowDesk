@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type {
+  ClientStatus,
   CreateClientInput,
   CreateProjectInput,
   CreateTaskInput,
+  TaskStatus,
   UpdateTaskInput,
 } from "@flowdesk/shared";
 import {
@@ -41,6 +43,22 @@ export class InMemoryOperationsRepository extends OperationsRepository {
     };
     this.clients.push(record);
     return record;
+  }
+
+  async listClients(
+    workspaceId: string,
+    filters: { search?: string; status?: ClientStatus },
+  ): Promise<ClientRecord[]> {
+    const search = filters.search?.toLocaleLowerCase();
+    return this.clients.filter(
+      (client) =>
+        client.workspaceId === workspaceId &&
+        !client.archivedAt &&
+        (!filters.status || client.status === filters.status) &&
+        (!search ||
+          client.name.toLocaleLowerCase().includes(search) ||
+          client.company?.toLocaleLowerCase().includes(search)),
+    );
   }
 
   async findClient(
@@ -99,6 +117,18 @@ export class InMemoryOperationsRepository extends OperationsRepository {
     return record;
   }
 
+  async listTasks(
+    workspaceId: string,
+    filters: { status?: TaskStatus },
+  ): Promise<TaskRecord[]> {
+    return this.tasks.filter(
+      (task) =>
+        task.workspaceId === workspaceId &&
+        !task.archivedAt &&
+        (!filters.status || task.status === filters.status),
+    );
+  }
+
   async findTask(
     workspaceId: string,
     taskId: string,
@@ -122,6 +152,17 @@ export class InMemoryOperationsRepository extends OperationsRepository {
     if (!task) return null;
     Object.assign(task, input);
     return task;
+  }
+
+  async archiveTask(
+    workspaceId: string,
+    taskId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const task = await this.findTask(workspaceId, taskId);
+    if (!task) return false;
+    task.archivedAt = now;
+    return true;
   }
 
   membershipExists(

@@ -6,9 +6,11 @@ import {
 } from "@nestjs/common";
 import type {
   CreateClientInput,
+  ClientStatus,
   CreateProjectInput,
   CreateTaskInput,
   UpdateTaskInput,
+  TaskStatus,
 } from "@flowdesk/shared";
 import type { RequestIdentity } from "../authorization/request-identity";
 import { PolicyService } from "../authorization/policy.service";
@@ -35,6 +37,15 @@ export class OperationsService {
     if (input.assignedMemberId)
       await this.assertMembership(workspaceId, input.assignedMemberId);
     return this.repository.createClient(workspaceId, input);
+  }
+
+  async listClients(
+    identity: RequestIdentity,
+    workspaceId: string,
+    filters: { search?: string; status?: ClientStatus },
+  ) {
+    await this.access.resolve(identity, workspaceId);
+    return this.repository.listClients(workspaceId, filters);
   }
 
   async getClient(
@@ -86,6 +97,15 @@ export class OperationsService {
     return this.repository.createTask(workspaceId, input);
   }
 
+  async listTasks(
+    identity: RequestIdentity,
+    workspaceId: string,
+    filters: { status?: TaskStatus },
+  ) {
+    await this.access.resolve(identity, workspaceId);
+    return this.repository.listTasks(workspaceId, filters);
+  }
+
   async updateTask(
     identity: RequestIdentity,
     workspaceId: string,
@@ -123,6 +143,17 @@ export class OperationsService {
       });
     }
     return updated;
+  }
+
+  async archiveTask(
+    identity: RequestIdentity,
+    workspaceId: string,
+    taskId: string,
+  ): Promise<void> {
+    const access = await this.access.resolve(identity, workspaceId);
+    this.policy.assert(access, "operations:write");
+    if (!(await this.repository.archiveTask(workspaceId, taskId, new Date())))
+      throw new NotFoundException("Task not found");
   }
 
   async listActivity(

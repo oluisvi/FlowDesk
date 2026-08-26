@@ -1,8 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type {
+  ClientStatus,
   CreateClientInput,
   CreateProjectInput,
   CreateTaskInput,
+  TaskStatus,
   UpdateTaskInput,
 } from "@flowdesk/shared";
 import { PrismaService } from "../common/prisma.service";
@@ -30,6 +32,26 @@ export class PrismaOperationsRepository extends OperationsRepository {
     return this.prisma.client.create({
       data: { workspaceId, ...input },
     }) as Promise<ClientRecord>;
+  }
+
+  listClients(
+    workspaceId: string,
+    filters: { search?: string; status?: ClientStatus },
+  ): Promise<ClientRecord[]> {
+    return this.prisma.client.findMany({
+      where: {
+        workspaceId,
+        archivedAt: null,
+        status: filters.status,
+        OR: filters.search
+          ? [
+              { name: { contains: filters.search, mode: "insensitive" } },
+              { company: { contains: filters.search, mode: "insensitive" } },
+            ]
+          : undefined,
+      },
+      orderBy: { name: "asc" },
+    }) as Promise<ClientRecord[]>;
   }
 
   findClient(
@@ -73,6 +95,16 @@ export class PrismaOperationsRepository extends OperationsRepository {
     }) as unknown as Promise<TaskRecord>;
   }
 
+  listTasks(
+    workspaceId: string,
+    filters: { status?: TaskStatus },
+  ): Promise<TaskRecord[]> {
+    return this.prisma.task.findMany({
+      where: { workspaceId, archivedAt: null, status: filters.status },
+      orderBy: { createdAt: "desc" },
+    }) as unknown as Promise<TaskRecord[]>;
+  }
+
   findTask(workspaceId: string, taskId: string): Promise<TaskRecord | null> {
     return this.prisma.task.findFirst({
       where: { id: taskId, workspaceId, archivedAt: null },
@@ -91,6 +123,18 @@ export class PrismaOperationsRepository extends OperationsRepository {
         dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
       },
     }) as unknown as Promise<TaskRecord>;
+  }
+
+  async archiveTask(
+    workspaceId: string,
+    taskId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const result = await this.prisma.task.updateMany({
+      where: { id: taskId, workspaceId, archivedAt: null },
+      data: { archivedAt: now },
+    });
+    return result.count > 0;
   }
 
   async membershipExists(

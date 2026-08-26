@@ -29,9 +29,11 @@ export {
 } from "./contracts/operations";
 export type {
   CreateClientInput,
+  ClientStatus,
   CreateProjectInput,
   CreateTaskCommentInput,
   CreateTaskInput,
   TaskStatus,
+  ProjectStatus,
   UpdateTaskInput,
 } from "./contracts/operations";

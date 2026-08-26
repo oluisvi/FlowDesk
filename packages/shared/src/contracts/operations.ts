@@ -57,3 +57,5 @@ export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 export type CreateTaskCommentInput = z.infer<typeof CreateTaskCommentSchema>;
 export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+export type ClientStatus = z.infer<typeof ClientStatusSchema>;
+export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;

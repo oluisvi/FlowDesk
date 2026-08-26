@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Inject,
   Param,
   Patch,
@@ -11,10 +14,12 @@ import {
 } from "@nestjs/common";
 import {
   CreateClientSchema,
+  ClientStatusSchema,
   CreateProjectSchema,
   CreateTaskSchema,
   CreateTaskCommentSchema,
   UpdateTaskSchema,
+  TaskStatusSchema,
 } from "@flowdesk/shared";
 import { AccessGuard } from "../auth/access.guard";
 import { CurrentIdentity } from "../auth/current-identity.decorator";
@@ -40,6 +45,19 @@ export class OperationsController {
       workspaceId,
       parseBody(CreateClientSchema, body),
     );
+  }
+
+  @Get("clients")
+  listClients(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+  ) {
+    return this.operations.listClients(identity, workspaceId, {
+      search: search?.trim() || undefined,
+      status: status ? ClientStatusSchema.parse(status) : undefined,
+    });
   }
 
   @Get("clients/:clientId")
@@ -77,6 +95,17 @@ export class OperationsController {
     );
   }
 
+  @Get("tasks")
+  listTasks(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Query("status") status?: string,
+  ) {
+    return this.operations.listTasks(identity, workspaceId, {
+      status: status ? TaskStatusSchema.parse(status) : undefined,
+    });
+  }
+
   @Patch("tasks/:taskId")
   updateTask(
     @CurrentIdentity() identity: RequestIdentity,
@@ -90,6 +119,16 @@ export class OperationsController {
       taskId,
       parseBody(UpdateTaskSchema, body),
     );
+  }
+
+  @Delete("tasks/:taskId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  archiveTask(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("taskId") taskId: string,
+  ) {
+    return this.operations.archiveTask(identity, workspaceId, taskId);
   }
 
   @Get("activity")
