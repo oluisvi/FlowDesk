@@ -55,6 +55,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Generate Prisma client
         run: pnpm prisma:generate
+      - name: Build workspace packages
+        run: pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/ui build
       - name: Apply migrations
         run: pnpm db:deploy
       - name: Formatting
