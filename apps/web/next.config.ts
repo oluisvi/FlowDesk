@@ -31,6 +31,7 @@ const securityHeaders = [
 
 const config: NextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ["127.0.0.1"],
   experimental: {
     optimizePackageImports: ["lucide-react", "@flowdesk/ui"],
   },

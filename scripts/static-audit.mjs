@@ -58,7 +58,9 @@ function walk(dir) {
 }
 walk(root);
 
-const sourceFiles = files.filter((file) => /\.(?:ts|tsx|js|mjs|cjs)$/.test(file));
+const sourceFiles = files.filter(
+  (file) => /\.(?:ts|tsx|js|mjs|cjs)$/.test(file) && !file.endsWith("next-env.d.ts"),
+);
 const importPattern = /(?:from\s+["']|import\s*["'])(\.{1,2}\/[^"']+)["']/g;
 for (const file of sourceFiles) {
   const content = readFileSync(file, "utf8");
