@@ -13,10 +13,11 @@ test("workflow studio exposes the visual builder and validation controls", async
   const palette = page.getByLabel("Blocos de workflow");
   if (isMobile) await expect(palette).toBeHidden();
   else await expect(palette).toBeVisible();
-  await page.locator(".flow-node").first().click();
+  const triggerNode = page.locator(".flow-node").filter({ hasText: "Cliente criado" }).first();
+  await triggerNode.click();
   await expect(page.getByText("Inspector", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Validar/i })).toBeVisible();
-  await expect(page.getByText("Cliente criado", { exact: true }).first()).toBeVisible();
+  await expect(triggerNode.getByText("Cliente criado", { exact: true })).toBeVisible();
 });
 
 test("creating a client reaches a persisted successful workflow execution", async ({ page }) => {
