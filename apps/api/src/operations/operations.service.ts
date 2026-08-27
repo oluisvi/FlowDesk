@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Inject,
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
@@ -34,9 +35,10 @@ export interface ActorContext {
 @Injectable()
 export class OperationsService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(WorkspaceAccessService)
     private readonly access: WorkspaceAccessService,
-    private readonly policy: PolicyService,
+    @Inject(PolicyService) private readonly policy: PolicyService,
   ) {}
 
   private user(identity: RequestIdentity): ActorContext {

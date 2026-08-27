@@ -1,4 +1,4 @@
-import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
+import { Controller, Get, Inject, ServiceUnavailableException } from "@nestjs/common";
 import type { HealthResponse } from "@flowdesk/shared";
 import { PrismaService } from "../common/prisma.service.js";
 import { QueueInfrastructureService } from "../outbox/queue-infrastructure.service.js";
@@ -6,7 +6,8 @@ import { QueueInfrastructureService } from "../outbox/queue-infrastructure.servi
 @Controller("health")
 export class HealthController {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(QueueInfrastructureService)
     private readonly queue: QueueInfrastructureService,
   ) {}
 

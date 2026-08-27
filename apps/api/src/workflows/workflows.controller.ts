@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Patch,
   Post,
@@ -22,7 +23,9 @@ import { WorkflowsService } from "./workflows.service.js";
 @Controller("workspaces/:workspaceId")
 @UseGuards(AccessGuard)
 export class WorkflowsController {
-  constructor(private readonly workflows: WorkflowsService) {}
+  constructor(
+    @Inject(WorkflowsService) private readonly workflows: WorkflowsService,
+  ) {}
 
   @Get("workflows")
   list(

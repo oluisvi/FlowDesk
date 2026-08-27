@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   GoneException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -16,9 +17,10 @@ import { createOpaqueToken, hashOpaqueToken } from "../common/token-utils.js";
 @Injectable()
 export class WorkspacesService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(WorkspaceAccessService)
     private readonly access: WorkspaceAccessService,
-    private readonly policy: PolicyService,
+    @Inject(PolicyService) private readonly policy: PolicyService,
   ) {}
 
   async create(identity: RequestIdentity, name: string) {

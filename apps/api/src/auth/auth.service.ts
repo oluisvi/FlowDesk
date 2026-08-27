@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   ConflictException,
   GoneException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -28,9 +29,10 @@ type SafeUser = { id: string; email: string; name: string };
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly passwords: PasswordService,
-    private readonly jwt: JwtService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PasswordService) private readonly passwords: PasswordService,
+    @Inject(JwtService) private readonly jwt: JwtService,
+    @Inject(PasswordResetDeliveryService)
     private readonly resetDelivery: PasswordResetDeliveryService,
   ) {}
 

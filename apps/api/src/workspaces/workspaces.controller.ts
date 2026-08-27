@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Patch,
   Post,
@@ -27,7 +28,9 @@ import { WorkspacesService } from "./workspaces.service.js";
 @Controller()
 @UseGuards(AccessGuard)
 export class WorkspacesController {
-  constructor(private readonly workspaces: WorkspacesService) {}
+  constructor(
+    @Inject(WorkspacesService) private readonly workspaces: WorkspacesService,
+  ) {}
 
   @Post("workspaces")
   async create(

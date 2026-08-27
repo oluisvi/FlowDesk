@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 import {
   WorkflowDefinitionSchema,
@@ -16,7 +16,8 @@ import { topologicalNodes, triggerMatches } from "./workflow-validator.js";
 @Injectable()
 export class WorkflowEngineService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(AutomationActionsService)
     private readonly actions: AutomationActionsService,
   ) {}
 

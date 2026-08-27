@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  Inject,
   Param,
   Patch,
   Post,
@@ -32,7 +33,9 @@ import { OperationsService } from "./operations.service.js";
 @Controller("workspaces/:workspaceId")
 @UseGuards(AccessGuard)
 export class OperationsController {
-  constructor(private readonly operations: OperationsService) {}
+  constructor(
+    @Inject(OperationsService) private readonly operations: OperationsService,
+  ) {}
 
   @Post("clients")
   createClient(

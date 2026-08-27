@@ -1,3 +1,47 @@
-import { CanActivate,ExecutionContext,Injectable,UnauthorizedException } from "@nestjs/common"; import { JwtService } from "@nestjs/jwt"; import type { Request } from "express"; import { PrismaService } from "../common/prisma.service.js"; import type { RequestIdentity } from "../authorization/request-identity.js";
-interface Claims{sub:string;sid:string;exp:number}
-@Injectable() export class AccessGuard implements CanActivate{constructor(private readonly jwt:JwtService,private readonly prisma:PrismaService){} async canActivate(context:ExecutionContext):Promise<boolean>{const request=context.switchToHttp().getRequest<Request & {identity?:RequestIdentity}>();const value=request.headers.authorization;if(!value?.startsWith("Bearer "))throw new UnauthorizedException();try{const claims=await this.jwt.verifyAsync<Claims>(value.slice(7));const session=await this.prisma.session.findFirst({where:{id:claims.sid,userId:claims.sub,revokedAt:null,expiresAt:{gt:new Date()}},select:{id:true}});if(!session)throw new UnauthorizedException();request.identity={userId:claims.sub,sessionId:claims.sid};return true;}catch{throw new UnauthorizedException();}}}
+import {
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import type { Request } from "express";
+import { PrismaService } from "../common/prisma.service.js";
+import type { RequestIdentity } from "../authorization/request-identity.js";
+interface Claims {
+  sub: string;
+  sid: string;
+  exp: number;
+}
+@Injectable()
+export class AccessGuard implements CanActivate {
+  constructor(
+    @Inject(JwtService) private readonly jwt: JwtService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { identity?: RequestIdentity }>();
+    const value = request.headers.authorization;
+    if (!value?.startsWith("Bearer ")) throw new UnauthorizedException();
+    try {
+      const claims = await this.jwt.verifyAsync<Claims>(value.slice(7));
+      const session = await this.prisma.session.findFirst({
+        where: {
+          id: claims.sid,
+          userId: claims.sub,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      });
+      if (!session) throw new UnauthorizedException();
+      request.identity = { userId: claims.sub, sessionId: claims.sid };
+      return true;
+    } catch {
+      throw new UnauthorizedException();
+    }
+  }
+}

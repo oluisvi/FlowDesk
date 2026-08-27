@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Injectable, UnprocessableEntityException } from "@nestjs/common";
+import { Inject, Injectable, UnprocessableEntityException } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 import type { WorkflowNode } from "@flowdesk/shared";
 import { PrismaService } from "../common/prisma.service.js";
@@ -29,7 +29,7 @@ function uuidFrom(key: string): string {
 
 @Injectable()
 export class AutomationActionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async execute(
     node: ActionNode,

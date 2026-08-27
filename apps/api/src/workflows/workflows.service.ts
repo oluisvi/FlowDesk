@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   Injectable,
+  Inject,
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
@@ -21,9 +22,10 @@ import {
 @Injectable()
 export class WorkflowsService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(WorkspaceAccessService)
     private readonly access: WorkspaceAccessService,
-    private readonly policy: PolicyService,
+    @Inject(PolicyService) private readonly policy: PolicyService,
   ) {}
 
   async list(identity: RequestIdentity, workspaceId: string) {

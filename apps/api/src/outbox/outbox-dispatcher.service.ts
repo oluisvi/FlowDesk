@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { PrismaService } from "../common/prisma.service.js";
 import { QueueInfrastructureService } from "./queue-infrastructure.service.js";
 
@@ -9,7 +9,8 @@ export class OutboxDispatcherService implements OnModuleInit, OnModuleDestroy {
   private running = false;
 
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(QueueInfrastructureService)
     private readonly queue: QueueInfrastructureService,
   ) {}
 
