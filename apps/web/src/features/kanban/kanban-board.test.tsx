@@ -1,0 +1,2 @@
+import { describe,expect,it } from "vitest"; import { optimisticMove } from "./kanban-board"; import type { Task } from "@/lib/types";
+const task={id:"1",title:"Briefing",status:"BACKLOG",priority:"MEDIUM",tags:[]} as Task;describe("optimistic Kanban",()=>{it("moves only the selected task",()=>{expect(optimisticMove([task],"1","IN_PROGRESS")[0]?.status).toBe("IN_PROGRESS")});it("preserves source data for rollback snapshots",()=>{const original=[task];optimisticMove(original,"1","DONE");expect(original[0]?.status).toBe("BACKLOG")});});

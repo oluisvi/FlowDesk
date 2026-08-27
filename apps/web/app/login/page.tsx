@@ -1,0 +1,1 @@
+import type { Metadata } from "next"; import { AuthForm } from "@/features/auth/auth-form"; import { AuthShell } from "@/features/auth/auth-shell"; export const metadata:Metadata={title:"Entrar",robots:{index:false}}; export default function Page(){return <AuthShell><AuthForm mode="login"/></AuthShell>}

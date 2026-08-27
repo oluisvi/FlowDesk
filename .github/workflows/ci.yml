@@ -1,29 +1,129 @@
-name: CI
+name: FlowDesk CI
 
 on:
-  pull_request:
   push:
-    branches: [main, codex/flowdesk-mvp]
+    branches: [main, "codex/**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: flowdesk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: flowdesk
+          POSTGRES_PASSWORD: flowdesk
+          POSTGRES_DB: flowdesk
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U flowdesk -d flowdesk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://flowdesk:flowdesk@127.0.0.1:5432/flowdesk?schema=public
+      REDIS_URL: redis://127.0.0.1:6379
+      JWT_ACCESS_SECRET: flowdesk-ci-secret-that-is-longer-than-thirty-two-characters
+      NEXT_PUBLIC_API_URL: /api/v1
+      FLOWDESK_API_ORIGIN: http://127.0.0.1:3001
+      CORS_ORIGIN: http://127.0.0.1:3000
+      FLOWDESK_DISABLE_OUTBOX_DISPATCHER: "true"
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          version: 11.19.0
-      - uses: actions/setup-node@v5
+          node-version-file: .node-version
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+      - name: Build workspace packages
+        run: pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/ui build
+      - name: Apply migrations
+        run: pnpm db:deploy
+      - name: Formatting
+        run: pnpm format
+      - name: Static release audit
+        run: pnpm audit:static
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test
+      - name: Integration tests
+        run: pnpm test:integration
+      - name: Prisma validation
+        run: pnpm prisma:validate
+      - name: Production build
+        run: pnpm build
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: flowdesk
+          POSTGRES_PASSWORD: flowdesk
+          POSTGRES_DB: flowdesk
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U flowdesk -d flowdesk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      WEB_PORT: 3000
+      API_PORT: 3001
+      DATABASE_URL: postgresql://flowdesk:flowdesk@127.0.0.1:5432/flowdesk?schema=public
+      REDIS_URL: redis://127.0.0.1:6379
+      JWT_ACCESS_SECRET: flowdesk-browser-secret-that-is-longer-than-thirty-two-characters
+      NEXT_PUBLIC_API_URL: /api/v1
+      FLOWDESK_API_ORIGIN: http://127.0.0.1:3001
+      CORS_ORIGIN: http://127.0.0.1:3000
+      SEED_OWNER_EMAIL: owner@flowdesk.local
+      SEED_OWNER_PASSWORD: ChangeMeNow123!
+      FLOWDESK_DISABLE_OUTBOX_DISPATCHER: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 24.19.0
-          cache: pnpm
+          node-version-file: .node-version
+      - run: corepack enable
       - run: pnpm install --frozen-lockfile
-      - run: pnpm format
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-      - run: pnpm test:integration
-      - run: pnpm --filter @flowdesk/web exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
-      - run: test -z "$(git status --porcelain)"
+      - run: pnpm prisma:generate
+      - run: pnpm db:deploy
+      - run: pnpm db:seed
+      - name: Install Chromium
+        run: pnpm --filter @flowdesk/web exec playwright install --with-deps chromium
+      - name: Critical browser journeys
+        run: pnpm test:e2e

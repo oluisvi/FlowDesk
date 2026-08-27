@@ -1,28 +1,41 @@
 {
   "name": "flowdesk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@11.19.0",
   "engines": {
-    "node": "24.19.0",
-    "pnpm": "11.19.0"
+    "node": ">=20.18 <25",
+    "pnpm": ">=10 <12"
   },
   "scripts": {
-    "dev": "pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --parallel --filter @flowdesk/web --filter @flowdesk/api dev",
-    "build": "pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/api build && pnpm --filter @flowdesk/web build",
-    "format": "prettier --check apps packages .github README.md package.json turbo.json compose.yaml",
+    "dev": "pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/ui build && concurrently -k -n api,web,worker -c blue,green,magenta \"pnpm --filter @flowdesk/api dev\" \"pnpm --filter @flowdesk/web dev\" \"pnpm --filter @flowdesk/api worker:dev\"",
+    "build": "pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/ui build && pnpm --filter @flowdesk/api build && pnpm --filter @flowdesk/web build",
+    "format": "node scripts/format-check.mjs",
+    "format:write": "prettier --write .",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "test:integration": "pnpm --filter @flowdesk/api test:integration",
-    "test:e2e": "pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/web test:e2e"
+    "test:e2e": "pnpm --filter @flowdesk/web test:e2e",
+    "prisma:generate": "pnpm --filter @flowdesk/api prisma:generate",
+    "prisma:validate": "pnpm --filter @flowdesk/api prisma:validate",
+    "db:migrate": "pnpm --filter @flowdesk/api prisma:migrate",
+    "db:seed": "pnpm --filter @flowdesk/api prisma:seed",
+    "quality": "pnpm format && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "db:deploy": "pnpm --filter @flowdesk/api prisma:deploy",
+    "verify": "pnpm format && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm prisma:validate && pnpm build",
+    "format:prettier": "prettier --check .",
+    "audit:static": "node scripts/static-audit.mjs",
+    "verify:static": "pnpm format && pnpm audit:static"
   },
   "devDependencies": {
-    "@eslint/js": "^9.35.0",
-    "eslint": "^9.35.0",
-    "globals": "^16.3.0",
+    "@eslint/js": "^9.39.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.0",
+    "globals": "^16.5.0",
     "prettier": "^3.6.2",
-    "typescript": "^5.9.2",
-    "typescript-eslint": "^8.43.0"
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.1"
   }
 }

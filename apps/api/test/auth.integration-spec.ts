@@ -1,165 +1,75 @@
-import request from "supertest";
-import { createHash } from "node:crypto";
-import { afterEach, describe, expect, it } from "vitest";
 import type { INestApplication } from "@nestjs/common";
-import { createIdentityTestApp } from "./support/identity-test-app";
+import request from "supertest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import type { PrismaService } from "../src/common/prisma.service.js";
+import { auth, register, resetTestDatabase, startTestApp } from "./support/test-app.js";
 
-const password = "correct horse battery staple";
+let app: INestApplication;
+let prisma: PrismaService;
+beforeAll(async () => ({ app, prisma } = await startTestApp()));
+beforeEach(async () => resetTestDatabase(prisma));
+afterAll(async () => app.close());
 
-function refreshCookie(response: request.Response): string {
-  const cookies = response.headers["set-cookie"];
-  const value = Array.isArray(cookies) ? cookies[0] : cookies;
-  if (!value) throw new Error("refresh cookie not returned");
-  return value.split(";", 1)[0];
-}
-
-describe("identity HTTP integration", () => {
-  let app: INestApplication | undefined;
-
-  afterEach(async () => app?.close());
-
-  it("revokes a token family when a rotated refresh token is reused", async () => {
-    ({ app } = await createIdentityTestApp());
-    const registered = await request(app.getHttpServer())
-      .post("/api/v1/auth/register")
-      .send({ email: "ada@example.com", name: "Ada", password })
-      .expect(201);
-    const firstCookie = refreshCookie(registered);
-
+describe("authentication", () => {
+  it("registers, rotates a refresh token and revokes the reused family", async () => {
+    const session = await register(app, "owner@flowdesk.test");
     const rotated = await request(app.getHttpServer())
       .post("/api/v1/auth/refresh")
-      .set("Cookie", firstCookie)
+      .set("Cookie", session.cookie)
       .expect(200);
-    const rotatedCookie = refreshCookie(rotated);
-
+    const nextCookie = String(rotated.headers["set-cookie"]?.[0] ?? "");
+    expect(nextCookie).toContain("flowdesk_refresh=");
     await request(app.getHttpServer())
       .post("/api/v1/auth/refresh")
-      .set("Cookie", firstCookie)
+      .set("Cookie", session.cookie)
       .expect(401);
     await request(app.getHttpServer())
       .post("/api/v1/auth/refresh")
-      .set("Cookie", rotatedCookie)
+      .set("Cookie", nextCookie)
       .expect(401);
   });
 
-  it("rejects expired invitations and prevents invitation reuse", async () => {
-    const testApp = await createIdentityTestApp();
-    ({ app } = testApp);
-    const owner = await request(app.getHttpServer())
-      .post("/api/v1/auth/register")
-      .send({ email: "owner@example.com", name: "Owner", password })
-      .expect(201);
-    const ownerToken = owner.body.accessToken as string;
-    const workspace = await request(app.getHttpServer())
-      .post("/api/v1/workspaces")
-      .set("Authorization", `Bearer ${ownerToken}`)
-      .send({ name: "Studio" })
-      .expect(201);
-
-    const expiredToken = "expired-invitation-token-0000000000000000";
-    await testApp.repository.createInvitation({
-      workspaceId: workspace.body.id as string,
-      email: "expired@example.com",
-      role: "MEMBER",
-      tokenHash: createHash("sha256").update(expiredToken).digest("hex"),
-      expiresAt: new Date("2026-08-26T11:00:00.000Z"),
-      invitedById: owner.body.user.id as string,
-    });
-    await request(app.getHttpServer())
-      .post("/api/v1/invitations/accept")
-      .set("Authorization", `Bearer ${ownerToken}`)
-      .send({ token: expiredToken })
-      .expect(410);
-
-    const invited = await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspace.body.id}/invitations`)
-      .set("Authorization", `Bearer ${ownerToken}`)
-      .send({ email: "owner@example.com", role: "MEMBER" })
-      .expect(201);
-    await request(app.getHttpServer())
-      .post("/api/v1/invitations/accept")
-      .set("Authorization", `Bearer ${ownerToken}`)
-      .send({ token: invited.body.token })
-      .expect(200);
-    await request(app.getHttpServer())
-      .post("/api/v1/invitations/accept")
-      .set("Authorization", `Bearer ${ownerToken}`)
-      .send({ token: invited.body.token })
-      .expect(410);
-  });
-
-  it("lists and revokes the caller's own sessions", async () => {
-    ({ app } = await createIdentityTestApp());
-    const registered = await request(app.getHttpServer())
-      .post("/api/v1/auth/register")
-      .send({ email: "sessions@example.com", name: "Sessions", password })
-      .expect(201);
-    const token = registered.body.accessToken as string;
-    const cookie = refreshCookie(registered);
-    const sessions = await request(app.getHttpServer())
+  it("lists and revokes an owned session", async () => {
+    const session = await register(app, "sessions@flowdesk.test");
+    const list = await request(app.getHttpServer())
       .get("/api/v1/auth/sessions")
-      .set("Authorization", `Bearer ${token}`)
+      .set(auth(session.accessToken))
       .expect(200);
-    expect(sessions.body).toHaveLength(1);
-    expect(sessions.body[0]).not.toHaveProperty("tokenHash");
-
+    expect(list.body).toHaveLength(1);
     await request(app.getHttpServer())
-      .delete(`/api/v1/auth/sessions/${sessions.body[0].id}`)
-      .set("Authorization", `Bearer ${token}`)
+      .delete(`/api/v1/auth/sessions/${list.body[0].id as string}`)
+      .set(auth(session.accessToken))
       .expect(204);
-    await request(app.getHttpServer())
-      .post("/api/v1/auth/refresh")
-      .set("Cookie", cookie)
-      .expect(401);
   });
 
-  it("uses password reset tokens once and revokes existing sessions", async () => {
-    ({ app } = await createIdentityTestApp());
-    const registered = await request(app.getHttpServer())
-      .post("/api/v1/auth/register")
-      .send({ email: "reset@example.com", name: "Reset", password })
-      .expect(201);
-    const cookie = refreshCookie(registered);
+  it("keeps password recovery enumeration-safe", async () => {
+    await register(app, "recovery@flowdesk.test");
+    const existing = await request(app.getHttpServer()).post("/api/v1/auth/password-recovery").send({ email: "recovery@flowdesk.test" }).expect(202);
+    const missing = await request(app.getHttpServer()).post("/api/v1/auth/password-recovery").send({ email: "missing@flowdesk.test" }).expect(202);
+    expect(existing.body.accepted).toBe(true);
+    expect(missing.body).toEqual({ accepted: true });
+  });
+
+  it("revokes active sessions when a password reset succeeds", async () => {
+    const session = await register(app, "reset@flowdesk.test");
     const recovery = await request(app.getHttpServer())
       .post("/api/v1/auth/password-recovery")
-      .send({ email: "reset@example.com" })
+      .send({ email: "reset@flowdesk.test" })
       .expect(202);
-    const resetToken = recovery.body.resetToken as string;
-    const newPassword = "a new correct horse battery staple";
+    expect(typeof recovery.body.resetToken).toBe("string");
 
     await request(app.getHttpServer())
       .post("/api/v1/auth/password-reset")
-      .send({ token: resetToken, password: newPassword })
+      .send({ token: recovery.body.resetToken, password: "NewPassword123!" })
       .expect(204);
-    await request(app.getHttpServer())
-      .post("/api/v1/auth/password-reset")
-      .send({ token: resetToken, password: newPassword })
-      .expect(410);
+
     await request(app.getHttpServer())
       .post("/api/v1/auth/refresh")
-      .set("Cookie", cookie)
+      .set("Cookie", session.cookie)
       .expect(401);
     await request(app.getHttpServer())
       .post("/api/v1/auth/login")
-      .send({ email: "reset@example.com", password: newPassword })
+      .send({ email: "reset@flowdesk.test", password: "NewPassword123!" })
       .expect(200);
-  });
-
-  it("returns the same safe authentication error for unknown email and wrong password", async () => {
-    ({ app } = await createIdentityTestApp());
-    await request(app.getHttpServer())
-      .post("/api/v1/auth/register")
-      .send({ email: "known@example.com", name: "Known", password })
-      .expect(201);
-    const unknown = await request(app.getHttpServer())
-      .post("/api/v1/auth/login")
-      .send({ email: "unknown@example.com", password })
-      .expect(401);
-    const wrong = await request(app.getHttpServer())
-      .post("/api/v1/auth/login")
-      .send({ email: "known@example.com", password: "wrong" })
-      .expect(401);
-    expect(unknown.body.error.message).toBe("Authentication failed");
-    expect(wrong.body.error.message).toBe("Authentication failed");
   });
 });

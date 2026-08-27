@@ -1,9 +1,1 @@
-import { createHash, randomBytes } from "node:crypto";
-
-export function createOpaqueToken(): string {
-  return randomBytes(32).toString("base64url");
-}
-
-export function hashOpaqueToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
+import { createHash, randomBytes } from "node:crypto"; export const createOpaqueToken=():string=>randomBytes(48).toString("base64url"); export const hashOpaqueToken=(value:string):string=>createHash("sha256").update(value).digest("hex");

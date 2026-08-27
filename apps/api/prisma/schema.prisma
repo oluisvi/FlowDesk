@@ -46,12 +46,38 @@ enum Priority {
 enum ActivityActorType {
   USER
   AUTOMATION
+  SYSTEM
 }
 
 enum ActivityEntityType {
+  WORKSPACE
   CLIENT
   PROJECT
   TASK
+  WORKFLOW
+  NOTIFICATION
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+enum WorkflowExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+enum WorkflowStepStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
 }
 
 model User {
@@ -67,6 +93,8 @@ model User {
   invitationsSent     WorkspaceInvitation[] @relation("InvitationSender")
   comments            TaskComment[]
   notifications       Notification[]
+  createdWorkflows    Workflow[]             @relation("WorkflowCreator")
+  auditLogs           AuditLog[]
 }
 
 model Session {
@@ -83,7 +111,7 @@ model Session {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
-  @@index([familyId])
+  @@index([familyId, revokedAt])
 }
 
 model PasswordResetToken {
@@ -95,24 +123,29 @@ model PasswordResetToken {
   createdAt DateTime  @default(now())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, expiresAt])
 }
 
 model Workspace {
-  id             String                @id @default(uuid()) @db.Uuid
-  name           String                @db.VarChar(100)
-  slug           String                @unique @db.VarChar(140)
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  memberships    Membership[]
-  invitations    WorkspaceInvitation[]
-  clients        Client[]
-  projects       Project[]
-  projectMembers ProjectMember[]
-  tasks          Task[]
-  activities     Activity[]
-  comments       TaskComment[]
-  notifications  Notification[]
+  id                 String              @id @default(uuid()) @db.Uuid
+  name               String              @db.VarChar(100)
+  slug               String              @unique @db.VarChar(140)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  memberships        Membership[]
+  invitations        WorkspaceInvitation[]
+  clients            Client[]
+  projects           Project[]
+  projectMembers     ProjectMember[]
+  tasks              Task[]
+  activities         Activity[]
+  comments           TaskComment[]
+  notifications      Notification[]
+  workflows          Workflow[]
+  workflowExecutions WorkflowExecution[]
+  outboxEvents       OutboxEvent[]
+  idempotencyRecords IdempotencyRecord[]
+  auditLogs          AuditLog[]
 }
 
 model Membership {
@@ -130,6 +163,24 @@ model Membership {
 
   @@unique([workspaceId, userId])
   @@index([userId])
+  @@index([workspaceId, role])
+}
+
+model WorkspaceInvitation {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @db.Uuid
+  email       String        @db.VarChar(320)
+  role        WorkspaceRole
+  tokenHash   String        @unique @db.Char(64)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  invitedById String        @db.Uuid
+  createdAt   DateTime      @default(now())
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy   User          @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, email, createdAt])
 }
 
 model Client {
@@ -141,6 +192,7 @@ model Client {
   phone            String?      @db.VarChar(40)
   notes            String?
   status           ClientStatus @default(ACTIVE)
+  tags             String[]     @default([])
   assignedMemberId String?      @db.Uuid
   archivedAt       DateTime?
   createdAt        DateTime     @default(now())
@@ -150,27 +202,31 @@ model Client {
   projects         Project[]
 
   @@index([workspaceId, status, archivedAt])
+  @@index([workspaceId, assignedMemberId])
+  @@index([workspaceId, updatedAt])
 }
 
 model Project {
-  id          String          @id @default(uuid()) @db.Uuid
-  workspaceId String          @db.Uuid
-  clientId    String?         @db.Uuid
-  name        String          @db.VarChar(160)
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @db.Uuid
+  clientId    String?       @db.Uuid
+  name        String        @db.VarChar(160)
   description String?
-  status      ProjectStatus   @default(PLANNED)
-  priority    Priority        @default(MEDIUM)
+  status      ProjectStatus @default(PLANNED)
+  priority    Priority      @default(MEDIUM)
   deadline    DateTime?
   archivedAt  DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  client      Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client      Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
   tasks       Task[]
   members     ProjectMember[]
 
   @@index([workspaceId, status, archivedAt])
   @@index([workspaceId, clientId])
+  @@index([workspaceId, deadline])
+  @@index([workspaceId, updatedAt])
 }
 
 model ProjectMember {
@@ -179,9 +235,9 @@ model ProjectMember {
   projectId    String     @db.Uuid
   membershipId String     @db.Uuid
   createdAt    DateTime   @default(now())
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
-  workspace    Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, membershipId])
   @@index([workspaceId, projectId])
@@ -189,26 +245,29 @@ model ProjectMember {
 }
 
 model Task {
-  id          String        @id @default(uuid()) @db.Uuid
-  workspaceId String        @db.Uuid
-  projectId   String?       @db.Uuid
-  assigneeId  String?       @db.Uuid
-  title       String        @db.VarChar(200)
+  id          String      @id @default(uuid()) @db.Uuid
+  workspaceId String      @db.Uuid
+  projectId   String?     @db.Uuid
+  assigneeId  String?     @db.Uuid
+  title       String      @db.VarChar(200)
   description String?
-  status      TaskStatus    @default(BACKLOG)
-  priority    Priority      @default(MEDIUM)
+  status      TaskStatus  @default(BACKLOG)
+  priority    Priority    @default(MEDIUM)
+  tags        String[]    @default([])
   dueDate     DateTime?
   archivedAt  DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project     Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  assignee    Membership?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignee    Membership? @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   comments    TaskComment[]
 
   @@index([workspaceId, status, archivedAt])
   @@index([workspaceId, projectId])
   @@index([workspaceId, assigneeId])
+  @@index([workspaceId, dueDate])
+  @@index([workspaceId, updatedAt])
 }
 
 model TaskComment {
@@ -234,6 +293,7 @@ model Notification {
   title       String    @db.VarChar(160)
   message     String    @db.VarChar(500)
   targetPath  String?   @db.VarChar(500)
+  metadata    Json?
   readAt      DateTime?
   createdAt   DateTime  @default(now())
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -245,31 +305,142 @@ model Notification {
 model Activity {
   id          String             @id @default(uuid()) @db.Uuid
   workspaceId String             @db.Uuid
-  actorId     String             @db.Uuid
+  actorId     String?            @db.Uuid
   actorType   ActivityActorType
   entityType  ActivityEntityType
   entityId    String             @db.Uuid
   action      String             @db.VarChar(120)
+  metadata    Json?
   createdAt   DateTime           @default(now())
   workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, createdAt])
   @@index([workspaceId, entityId, createdAt])
+  @@index([workspaceId, actorType, createdAt])
 }
 
-model WorkspaceInvitation {
-  id          String        @id @default(uuid()) @db.Uuid
-  workspaceId String        @db.Uuid
-  email       String        @db.VarChar(320)
-  role        WorkspaceRole
-  tokenHash   String        @unique @db.Char(64)
-  expiresAt   DateTime
-  acceptedAt  DateTime?
-  revokedAt   DateTime?
-  invitedById String        @db.Uuid
-  createdAt   DateTime      @default(now())
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  invitedBy   User          @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Cascade)
+model Workflow {
+  id              String         @id @default(uuid()) @db.Uuid
+  workspaceId     String         @db.Uuid
+  name            String         @db.VarChar(140)
+  description     String?        @db.VarChar(1000)
+  status          WorkflowStatus @default(DRAFT)
+  draftDefinition Json
+  activeVersion   Int?
+  createdById     String         @db.Uuid
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy       User           @relation("WorkflowCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  versions        WorkflowVersion[]
+  executions      WorkflowExecution[]
 
-  @@index([workspaceId, email])
+  @@index([workspaceId, status, updatedAt])
+  @@index([createdById])
+}
+
+model WorkflowVersion {
+  id         String   @id @default(uuid()) @db.Uuid
+  workflowId String   @db.Uuid
+  version    Int
+  definition Json
+  checksum   String   @db.Char(64)
+  createdAt  DateTime @default(now())
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  executions WorkflowExecution[]
+
+  @@unique([workflowId, version])
+  @@index([workflowId, createdAt])
+}
+
+model WorkflowExecution {
+  id                String                  @id @default(uuid()) @db.Uuid
+  workspaceId       String                  @db.Uuid
+  workflowId        String                  @db.Uuid
+  workflowVersionId String                  @db.Uuid
+  triggerEventId    String                  @db.Uuid
+  status            WorkflowExecutionStatus @default(PENDING)
+  depth             Int                     @default(0)
+  error             String?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime                @default(now())
+  workspace         Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workflow          Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowVersion   WorkflowVersion         @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  steps             WorkflowStepExecution[]
+  idempotencyRecords IdempotencyRecord[]
+
+  @@unique([workflowId, triggerEventId])
+  @@index([workspaceId, createdAt])
+  @@index([workflowId, status, createdAt])
+}
+
+model WorkflowStepExecution {
+  id          String             @id @default(uuid()) @db.Uuid
+  executionId String             @db.Uuid
+  nodeId      String             @db.VarChar(80)
+  nodeType    String             @db.VarChar(80)
+  status      WorkflowStepStatus @default(PENDING)
+  attempt     Int                @default(1)
+  input       Json?
+  output      Json?
+  error       String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime           @default(now())
+  execution   WorkflowExecution  @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@unique([executionId, nodeId, attempt])
+  @@index([executionId, createdAt])
+}
+
+model OutboxEvent {
+  id            String    @id @default(uuid()) @db.Uuid
+  workspaceId   String    @db.Uuid
+  eventType     String    @db.VarChar(120)
+  aggregateType String    @db.VarChar(80)
+  aggregateId   String    @db.Uuid
+  payload       Json
+  causation     Json?
+  depth         Int       @default(0)
+  attempts      Int       @default(0)
+  processedAt   DateTime?
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([processedAt, createdAt])
+  @@index([workspaceId, eventType, createdAt])
+  @@index([workspaceId, aggregateId, createdAt])
+}
+
+model IdempotencyRecord {
+  id          String            @id @default(uuid()) @db.Uuid
+  workspaceId String            @db.Uuid
+  executionId String            @db.Uuid
+  nodeId      String            @db.VarChar(80)
+  key         String            @unique @db.VarChar(240)
+  result      Json?
+  createdAt   DateTime          @default(now())
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, executionId])
+}
+
+model AuditLog {
+  id           String     @id @default(uuid()) @db.Uuid
+  workspaceId  String?    @db.Uuid
+  userId       String?    @db.Uuid
+  action       String     @db.VarChar(120)
+  resourceType String     @db.VarChar(80)
+  resourceId   String?    @db.VarChar(120)
+  metadata     Json?
+  createdAt    DateTime   @default(now())
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([userId, createdAt])
 }

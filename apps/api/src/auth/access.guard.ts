@@ -7,27 +7,38 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import type { RequestIdentity } from "../authorization/request-identity";
-
-export interface AuthenticatedRequest extends Request {
-  identity: RequestIdentity;
+import { PrismaService } from "../common/prisma.service.js";
+import type { RequestIdentity } from "../authorization/request-identity.js";
+interface Claims {
+  sub: string;
+  sid: string;
+  exp: number;
 }
-
 @Injectable()
 export class AccessGuard implements CanActivate {
-  constructor(@Inject(JwtService) private readonly jwt: JwtService) {}
-
+  constructor(
+    @Inject(JwtService) private readonly jwt: JwtService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const [scheme, token] = request.headers.authorization?.split(" ") ?? [];
-    if (scheme !== "Bearer" || !token) throw new UnauthorizedException();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { identity?: RequestIdentity }>();
+    const value = request.headers.authorization;
+    if (!value?.startsWith("Bearer ")) throw new UnauthorizedException();
     try {
-      const payload = await this.jwt.verifyAsync<{
-        sub?: string;
-        sid?: string;
-      }>(token);
-      if (!payload.sub || !payload.sid) throw new UnauthorizedException();
-      request.identity = { userId: payload.sub, sessionId: payload.sid };
+      const claims = await this.jwt.verifyAsync<Claims>(value.slice(7));
+      const session = await this.prisma.session.findFirst({
+        where: {
+          id: claims.sid,
+          userId: claims.sub,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      });
+      if (!session) throw new UnauthorizedException();
+      request.identity = { userId: claims.sub, sessionId: claims.sid };
       return true;
     } catch {
       throw new UnauthorizedException();

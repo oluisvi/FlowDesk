@@ -1,0 +1,4 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && corepack enable && pnpm install --no-frozen-lockfile && pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/ui build && pnpm --filter @flowdesk/web build"
+}

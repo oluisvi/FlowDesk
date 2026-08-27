@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   HttpCode,
-  HttpStatus,
   Inject,
   Param,
   Patch,
@@ -14,22 +13,22 @@ import {
 } from "@nestjs/common";
 import {
   AssignProjectMemberSchema,
+  ClientListQuerySchema,
   CreateClientSchema,
-  ClientStatusSchema,
   CreateProjectSchema,
-  CreateTaskSchema,
   CreateTaskCommentSchema,
-  ProjectStatusSchema,
-  UpdateTaskSchema,
+  CreateTaskSchema,
+  ProjectListQuerySchema,
+  TaskListQuerySchema,
   UpdateClientSchema,
   UpdateProjectSchema,
-  TaskStatusSchema,
+  UpdateTaskSchema,
 } from "@flowdesk/shared";
-import { AccessGuard } from "../auth/access.guard";
-import { CurrentIdentity } from "../auth/current-identity.decorator";
-import type { RequestIdentity } from "../authorization/request-identity";
-import { parseBody } from "../common/validation";
-import { OperationsService } from "./operations.service";
+import { AccessGuard } from "../auth/access.guard.js";
+import { CurrentIdentity } from "../auth/current-identity.decorator.js";
+import type { RequestIdentity } from "../authorization/request-identity.js";
+import { parseBody } from "../common/validation.js";
+import { OperationsService } from "./operations.service.js";
 
 @Controller("workspaces/:workspaceId")
 @UseGuards(AccessGuard)
@@ -55,47 +54,47 @@ export class OperationsController {
   listClients(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Query("search") search?: string,
-    @Query("status") status?: string,
+    @Query() query: Record<string, string | undefined>,
   ) {
-    return this.operations.listClients(identity, workspaceId, {
-      search: search?.trim() || undefined,
-      status: status ? ClientStatusSchema.parse(status) : undefined,
-    });
+    return this.operations.listClients(
+      identity,
+      workspaceId,
+      parseBody(ClientListQuerySchema, query),
+    );
   }
 
-  @Get("clients/:clientId")
+  @Get("clients/:id")
   getClient(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Param("clientId") clientId: string,
+    @Param("id") id: string,
   ) {
-    return this.operations.getClient(identity, workspaceId, clientId);
+    return this.operations.getClient(identity, workspaceId, id);
   }
 
-  @Patch("clients/:clientId")
+  @Patch("clients/:id")
   updateClient(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Param("clientId") clientId: string,
+    @Param("id") id: string,
     @Body() body: unknown,
   ) {
     return this.operations.updateClient(
       identity,
       workspaceId,
-      clientId,
+      id,
       parseBody(UpdateClientSchema, body),
     );
   }
 
-  @Delete("clients/:clientId")
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("clients/:id")
+  @HttpCode(204)
   archiveClient(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Param("clientId") clientId: string,
+    @Param("id") id: string,
   ) {
-    return this.operations.archiveClient(identity, workspaceId, clientId);
+    return this.operations.archiveClient(identity, workspaceId, id);
   }
 
   @Post("projects")
@@ -115,36 +114,47 @@ export class OperationsController {
   listProjects(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Query("status") status?: string,
+    @Query() query: Record<string, string | undefined>,
   ) {
-    return this.operations.listProjects(identity, workspaceId, {
-      status: status ? ProjectStatusSchema.parse(status) : undefined,
-    });
+    return this.operations.listProjects(
+      identity,
+      workspaceId,
+      parseBody(ProjectListQuerySchema, query),
+    );
   }
 
-  @Patch("projects/:projectId")
+  @Get("projects/:id")
+  getProject(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("id") id: string,
+  ) {
+    return this.operations.getProject(identity, workspaceId, id);
+  }
+
+  @Patch("projects/:id")
   updateProject(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Param("projectId") projectId: string,
+    @Param("id") id: string,
     @Body() body: unknown,
   ) {
     return this.operations.updateProject(
       identity,
       workspaceId,
-      projectId,
+      id,
       parseBody(UpdateProjectSchema, body),
     );
   }
 
-  @Delete("projects/:projectId")
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("projects/:id")
+  @HttpCode(204)
   archiveProject(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Param("projectId") projectId: string,
+    @Param("id") id: string,
   ) {
-    return this.operations.archiveProject(identity, workspaceId, projectId);
+    return this.operations.archiveProject(identity, workspaceId, id);
   }
 
   @Post("projects/:projectId/members")
@@ -163,7 +173,7 @@ export class OperationsController {
   }
 
   @Get("projects/:projectId/members")
-  projectMembers(
+  listProjectMembers(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
     @Param("projectId") projectId: string,
@@ -172,7 +182,7 @@ export class OperationsController {
   }
 
   @Delete("projects/:projectId/members/:membershipId")
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(204)
   removeProjectMember(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
@@ -204,36 +214,71 @@ export class OperationsController {
   listTasks(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Query("status") status?: string,
+    @Query() query: Record<string, string | undefined>,
   ) {
-    return this.operations.listTasks(identity, workspaceId, {
-      status: status ? TaskStatusSchema.parse(status) : undefined,
-    });
+    return this.operations.listTasks(
+      identity,
+      workspaceId,
+      parseBody(TaskListQuerySchema, query),
+    );
   }
 
-  @Patch("tasks/:taskId")
+  @Get("tasks/:id")
+  getTask(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("id") id: string,
+  ) {
+    return this.operations.getTask(identity, workspaceId, id);
+  }
+
+  @Patch("tasks/:id")
   updateTask(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Param("taskId") taskId: string,
+    @Param("id") id: string,
     @Body() body: unknown,
   ) {
     return this.operations.updateTask(
       identity,
       workspaceId,
-      taskId,
+      id,
       parseBody(UpdateTaskSchema, body),
     );
   }
 
-  @Delete("tasks/:taskId")
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("tasks/:id")
+  @HttpCode(204)
   archiveTask(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
-    @Param("taskId") taskId: string,
+    @Param("id") id: string,
   ) {
-    return this.operations.archiveTask(identity, workspaceId, taskId);
+    return this.operations.archiveTask(identity, workspaceId, id);
+  }
+
+  @Post("tasks/:id/comments")
+  createComment(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("id") id: string,
+    @Body() body: unknown,
+  ) {
+    return this.operations.createComment(
+      identity,
+      workspaceId,
+      id,
+      parseBody(CreateTaskCommentSchema, body).content,
+    );
+  }
+
+  @Get("tasks/:id/comments")
+  listComments(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("id") id: string,
+  ) {
+    return this.operations.listComments(identity, workspaceId, id);
   }
 
   @Get("activity")
@@ -243,43 +288,6 @@ export class OperationsController {
     @Query("entityId") entityId?: string,
   ) {
     return this.operations.listActivity(identity, workspaceId, entityId);
-  }
-
-  @Post("tasks/:taskId/comments")
-  createComment(
-    @CurrentIdentity() identity: RequestIdentity,
-    @Param("workspaceId") workspaceId: string,
-    @Param("taskId") taskId: string,
-    @Body() body: unknown,
-  ) {
-    return this.operations.createComment(
-      identity,
-      workspaceId,
-      taskId,
-      parseBody(CreateTaskCommentSchema, body).content,
-    );
-  }
-
-  @Get("tasks/:taskId/comments")
-  comments(
-    @CurrentIdentity() identity: RequestIdentity,
-    @Param("workspaceId") workspaceId: string,
-    @Param("taskId") taskId: string,
-  ) {
-    return this.operations.listComments(identity, workspaceId, taskId);
-  }
-
-  @Patch("notifications/:notificationId/read")
-  markNotificationRead(
-    @CurrentIdentity() identity: RequestIdentity,
-    @Param("workspaceId") workspaceId: string,
-    @Param("notificationId") notificationId: string,
-  ) {
-    return this.operations.markNotificationRead(
-      identity,
-      workspaceId,
-      notificationId,
-    );
   }
 
   @Get("notifications")
@@ -295,8 +303,17 @@ export class OperationsController {
     );
   }
 
+  @Patch("notifications/:id/read")
+  markNotificationRead(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("id") id: string,
+  ) {
+    return this.operations.markNotificationRead(identity, workspaceId, id);
+  }
+
   @Patch("notifications/read-all")
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(204)
   markAllNotificationsRead(
     @CurrentIdentity() identity: RequestIdentity,
     @Param("workspaceId") workspaceId: string,
