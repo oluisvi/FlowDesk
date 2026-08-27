@@ -1,0 +1,21 @@
+FROM node:24-slim
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV FLOWDESK_PROCESS=worker
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable
+
+COPY . .
+
+RUN pnpm install --no-frozen-lockfile \
+  && pnpm prisma:generate \
+  && pnpm --filter @flowdesk/shared build \
+  && pnpm --filter @flowdesk/config build \
+  && pnpm --filter @flowdesk/api build
+
+CMD ["node", "apps/api/dist/worker/main.js"]

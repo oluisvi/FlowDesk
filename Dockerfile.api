@@ -1,0 +1,23 @@
+FROM node:24-slim
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV API_PORT=3001
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable
+
+COPY . .
+
+RUN pnpm install --no-frozen-lockfile \
+  && pnpm prisma:generate \
+  && pnpm --filter @flowdesk/shared build \
+  && pnpm --filter @flowdesk/config build \
+  && pnpm --filter @flowdesk/api build
+
+EXPOSE 3001
+
+CMD ["sh", "-c", "pnpm db:deploy && node apps/api/dist/main.js"]
