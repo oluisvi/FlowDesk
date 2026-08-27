@@ -33,7 +33,10 @@ function jwtSecret(): string {
 @Module({
   imports: [
     JwtModule.register({ secret: jwtSecret() }),
-    ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: 120 }]),
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: "default", ttl: 60_000, limit: 120 }],
+      skipIf: () => process.env.NODE_ENV === "test",
+    }),
   ],
   controllers: [
     HealthController,
