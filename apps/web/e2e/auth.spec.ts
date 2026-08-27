@@ -1,9 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { loginSeed } from "./helpers";
 
-test("seed owner signs in, reaches the workspace and can sign out", async ({ page }) => {
+test("seed owner signs in, reaches the workspace and can sign out", async ({
+  page,
+  isMobile,
+}) => {
   await loginSeed(page);
   await expect(page.getByLabel("Workspace atual")).toContainText("ServAgency");
+  if (isMobile) {
+    await page.getByRole("button", { name: "Abrir navegação" }).click();
+  }
   await page.getByRole("button", { name: "Sair" }).click();
   await expect(page).toHaveURL(/\/login$/);
 });

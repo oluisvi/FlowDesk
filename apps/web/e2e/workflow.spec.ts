@@ -1,13 +1,19 @@
 import { expect, test } from "@playwright/test";
 import { loginSeed } from "./helpers";
 
-test("workflow studio exposes the visual builder and validation controls", async ({ page }) => {
+test("workflow studio exposes the visual builder and validation controls", async ({
+  page,
+  isMobile,
+}) => {
   await loginSeed(page);
   await page.goto("/app/workflows");
   await expect(page.getByRole("heading", { name: "Workflows" })).toBeVisible();
   await page.getByText("Client onboarding", { exact: true }).first().click();
 
-  await expect(page.getByText("Blocos", { exact: true })).toBeVisible();
+  const palette = page.getByLabel("Blocos de workflow");
+  if (isMobile) await expect(palette).toBeHidden();
+  else await expect(palette).toBeVisible();
+  await page.locator(".flow-node").first().click();
   await expect(page.getByText("Inspector", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Validar/i })).toBeVisible();
   await expect(page.getByText("Cliente criado", { exact: true }).first()).toBeVisible();
