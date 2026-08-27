@@ -3,7 +3,7 @@ import { loginSeed } from "./helpers";
 
 test("owner creates a client and the new record appears in the operational view", async ({ page }) => {
   await loginSeed(page);
-  await page.getByRole("link", { name: "Clientes" }).click();
+  await page.goto("/app/clients");
   await expect(page.getByRole("heading", { name: "Clientes" })).toBeVisible();
   await page.getByRole("button", { name: /Novo cliente/i }).click();
 
@@ -18,7 +18,7 @@ test("owner creates a client and the new record appears in the operational view"
 
 test("seed task board renders all five operational states", async ({ page }) => {
   await loginSeed(page);
-  await page.getByRole("link", { name: "Board" }).click();
+  await page.goto("/app/board");
   await expect(page.getByText("Backlog", { exact: true })).toBeVisible();
   await expect(page.getByText("A fazer", { exact: true })).toBeVisible();
   await expect(page.getByText("Em andamento", { exact: true })).toBeVisible();

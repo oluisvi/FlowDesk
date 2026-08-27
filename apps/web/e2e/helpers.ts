@@ -10,7 +10,7 @@ export async function loginSeed(page: Page) {
   await page.getByLabel("Senha").fill(SEED_PASSWORD);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page).toHaveURL(/\/app(?:\/)?$/);
-  await expect(page.getByText("Visão geral", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Visão geral", exact: true })).toBeVisible();
 }
 
 export async function registerApi(
