@@ -1,4 +1,1 @@
-export interface RequestIdentity {
-  userId: string;
-  sessionId: string;
-}
+export interface RequestIdentity { userId:string; sessionId:string; }

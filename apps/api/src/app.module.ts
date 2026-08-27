@@ -2,54 +2,63 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { JwtModule } from "@nestjs/jwt";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
-import { AccessGuard } from "./auth/access.guard";
-import { AuthController } from "./auth/auth.controller";
-import { AuthService } from "./auth/auth.service";
-import { PasswordService } from "./auth/password.service";
-import { PolicyService } from "./authorization/policy.service";
-import { WorkspaceAccessService } from "./authorization/workspace-access.service";
-import { IdentityRepository } from "./common/identity.repository";
-import { PrismaIdentityRepository } from "./common/prisma-identity.repository";
-import { PrismaService } from "./common/prisma.service";
-import { HealthController } from "./health/health.controller";
-import { WorkspacesController } from "./workspaces/workspaces.controller";
-import { WorkspacesService } from "./workspaces/workspaces.service";
-import { OperationsController } from "./operations/operations.controller";
-import { OperationsRepository } from "./operations/operations.repository";
-import { OperationsService } from "./operations/operations.service";
-import { PrismaOperationsRepository } from "./operations/prisma-operations.repository";
+import { AccessGuard } from "./auth/access.guard.js";
+import { AuthController } from "./auth/auth.controller.js";
+import { AuthService } from "./auth/auth.service.js";
+import { PasswordService } from "./auth/password.service.js";
+import { PasswordResetDeliveryService } from "./auth/password-reset-delivery.service.js";
+import { PolicyService } from "./authorization/policy.service.js";
+import { WorkspaceAccessService } from "./authorization/workspace-access.service.js";
+import { PrismaService } from "./common/prisma.service.js";
+import { HealthController } from "./health/health.controller.js";
+import { OperationsController } from "./operations/operations.controller.js";
+import { OperationsService } from "./operations/operations.service.js";
+import { OutboxDispatcherService } from "./outbox/outbox-dispatcher.service.js";
+import { QueueInfrastructureService } from "./outbox/queue-infrastructure.service.js";
+import { AutomationActionsService } from "./workflows/automation-actions.service.js";
+import { WorkflowEngineService } from "./workflows/workflow-engine.service.js";
+import { WorkflowsController } from "./workflows/workflows.controller.js";
+import { WorkflowsService } from "./workflows/workflows.service.js";
+import { WorkspacesController } from "./workspaces/workspaces.controller.js";
+import { WorkspacesService } from "./workspaces/workspaces.service.js";
 
 function jwtSecret(): string {
   const secret = process.env.JWT_ACCESS_SECRET;
-  if (process.env.NODE_ENV === "production" && (!secret || secret.length < 32))
+  if (process.env.NODE_ENV === "production" && (!secret || secret.length < 32)) {
     throw new Error("JWT_ACCESS_SECRET must contain at least 32 characters");
-  return secret ?? "flowdesk-test-only-secret-at-least-32-characters";
+  }
+  return secret ?? "flowdesk-local-development-secret-at-least-32-characters";
 }
 
 @Module({
   imports: [
     JwtModule.register({ secret: jwtSecret() }),
-    ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: 100 }]),
+    ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: 120 }]),
   ],
   controllers: [
     HealthController,
     AuthController,
     WorkspacesController,
     OperationsController,
+    WorkflowsController,
   ],
   providers: [
     PrismaService,
-    { provide: IdentityRepository, useClass: PrismaIdentityRepository },
-    { provide: OperationsRepository, useClass: PrismaOperationsRepository },
-    { provide: "CLOCK", useValue: () => new Date() },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     AccessGuard,
-    AuthService,
     PasswordService,
+    PasswordResetDeliveryService,
+    AuthService,
     PolicyService,
     WorkspaceAccessService,
     WorkspacesService,
     OperationsService,
+    QueueInfrastructureService,
+    OutboxDispatcherService,
+    WorkflowsService,
+    AutomationActionsService,
+    WorkflowEngineService,
   ],
+  exports: [PrismaService, WorkflowEngineService, QueueInfrastructureService],
 })
 export class AppModule {}

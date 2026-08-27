@@ -1,0 +1,63 @@
+services:
+  - type: web
+    name: flowdesk-api
+    runtime: node
+    region: ohio
+    plan: starter
+    buildCommand: corepack enable && pnpm install --no-frozen-lockfile && pnpm prisma:generate && pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/api build
+    preDeployCommand: pnpm db:deploy
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /api/v1/health/ready
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: PASSWORD_RESET_BASE_URL
+        sync: false
+      - key: PASSWORD_RESET_FROM_EMAIL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: ACCESS_TOKEN_TTL_SECONDS
+        value: "900"
+      - key: REFRESH_TOKEN_TTL_DAYS
+        value: "30"
+      - key: WORKFLOW_MAX_DEPTH
+        value: "5"
+      - key: WORKFLOW_MAX_ACTIONS
+        value: "25"
+  - type: worker
+    name: flowdesk-worker
+    runtime: node
+    region: ohio
+    plan: starter
+    buildCommand: corepack enable && pnpm install --no-frozen-lockfile && pnpm prisma:generate && pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/api build
+    startCommand: node apps/api/dist/worker/main.js
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: NODE_ENV
+        value: production
+      - key: FLOWDESK_PROCESS
+        value: worker
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: WORKER_CONCURRENCY
+        value: "5"
+      - key: WORKFLOW_MAX_DEPTH
+        value: "5"
+      - key: WORKFLOW_MAX_ACTIONS
+        value: "25"

@@ -1,23 +1,2 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { IdentityRepository } from "../common/identity.repository";
-import type { RequestIdentity } from "./request-identity";
-import type { WorkspaceAccess } from "./workspace-access";
-
-@Injectable()
-export class WorkspaceAccessService {
-  constructor(
-    @Inject(IdentityRepository) private readonly repository: IdentityRepository,
-  ) {}
-
-  async resolve(
-    identity: RequestIdentity,
-    workspaceId: string,
-  ): Promise<WorkspaceAccess> {
-    const membership = await this.repository.findMembership(
-      identity.userId,
-      workspaceId,
-    );
-    if (!membership) throw new NotFoundException("Workspace not found");
-    return { workspaceId, membershipId: membership.id, role: membership.role };
-  }
-}
+import { Injectable,NotFoundException } from "@nestjs/common"; import { PrismaService } from "../common/prisma.service.js"; import type { RequestIdentity } from "./request-identity.js"; import type { WorkspaceAccess } from "./workspace-access.js";
+@Injectable() export class WorkspaceAccessService{constructor(private readonly prisma:PrismaService){} async resolve(identity:RequestIdentity,workspaceId:string):Promise<WorkspaceAccess>{const membership=await this.prisma.membership.findFirst({where:{workspaceId,userId:identity.userId}});if(!membership)throw new NotFoundException("Workspace not found");return {workspaceId,userId:identity.userId,membershipId:membership.id,role:membership.role};} async assertMembership(workspaceId:string,membershipId:string):Promise<void>{const count=await this.prisma.membership.count({where:{id:membershipId,workspaceId}});if(!count)throw new NotFoundException("Member not found");}}

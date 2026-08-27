@@ -1,11 +1,1 @@
-import { resolve } from "node:path";
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-  resolve: {
-    alias: {
-      "@flowdesk/config": resolve(__dirname, "../../packages/config/src"),
-      "@flowdesk/shared": resolve(__dirname, "../../packages/shared/src"),
-    },
-  },
-});
+import { defineConfig } from "vitest/config"; export default defineConfig({test:{environment:"node",include:["src/**/*.spec.ts"],coverage:{reporter:["text","json-summary"]}}});

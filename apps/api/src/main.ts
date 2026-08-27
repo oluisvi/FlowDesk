@@ -1,10 +1,1 @@
-import "reflect-metadata";
-import { loadEnvironment } from "@flowdesk/config";
-import { createApp } from "./app.factory";
-
-async function bootstrap(): Promise<void> {
-  const app = await createApp();
-  await app.listen(loadEnvironment().apiPort);
-}
-
-void bootstrap();
+import "reflect-metadata"; import { loadEnvironment } from "@flowdesk/config"; import { createApp } from "./app.factory.js"; async function bootstrap():Promise<void>{process.env.FLOWDESK_PROCESS="api";const app=await createApp();await app.listen(loadEnvironment().apiPort,"0.0.0.0");} void bootstrap();

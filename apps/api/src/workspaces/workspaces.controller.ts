@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Inject,
   Param,
   Patch,
   Post,
@@ -19,18 +18,16 @@ import {
   UpdateMemberRoleSchema,
   UpdateWorkspaceSchema,
 } from "@flowdesk/shared";
-import type { RequestIdentity } from "../authorization/request-identity";
-import { AccessGuard } from "../auth/access.guard";
-import { CurrentIdentity } from "../auth/current-identity.decorator";
-import { parseBody } from "../common/validation";
-import { WorkspacesService } from "./workspaces.service";
+import { AccessGuard } from "../auth/access.guard.js";
+import { CurrentIdentity } from "../auth/current-identity.decorator.js";
+import type { RequestIdentity } from "../authorization/request-identity.js";
+import { parseBody } from "../common/validation.js";
+import { WorkspacesService } from "./workspaces.service.js";
 
 @Controller()
 @UseGuards(AccessGuard)
 export class WorkspacesController {
-  constructor(
-    @Inject(WorkspacesService) private readonly workspaces: WorkspacesService,
-  ) {}
+  constructor(private readonly workspaces: WorkspacesService) {}
 
   @Post("workspaces")
   async create(
@@ -83,6 +80,24 @@ export class WorkspacesController {
       workspaceId,
       parseBody(CreateInvitationSchema, body),
     );
+  }
+
+  @Get("workspaces/:workspaceId/invitations")
+  invitations(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+  ) {
+    return this.workspaces.listInvitations(identity, workspaceId);
+  }
+
+  @Delete("workspaces/:workspaceId/invitations/:invitationId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  revokeInvitation(
+    @CurrentIdentity() identity: RequestIdentity,
+    @Param("workspaceId") workspaceId: string,
+    @Param("invitationId") invitationId: string,
+  ) {
+    return this.workspaces.revokeInvitation(identity, workspaceId, invitationId);
   }
 
   @Post("invitations/accept")

@@ -1,30 +1,8 @@
 {
-  "name": "@flowdesk/web",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "tsx scripts/dev.ts",
-    "build": "next build",
-    "lint": "eslint app --max-warnings=0",
-    "typecheck": "next typegen && tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
-    "test:e2e": "playwright test"
+  "name":"@flowdesk/web","version":"1.0.0","private":true,
+  "scripts":{"dev":"next dev --port ${WEB_PORT:-3000}","build":"next build","start":"next start","lint":"eslint app src e2e --max-warnings=0","typecheck":"tsc --noEmit","test":"vitest run","test:e2e":"playwright test"},
+  "dependencies":{
+    "@dnd-kit/core":"^6.3.1","@dnd-kit/sortable":"^10.0.0","@dnd-kit/utilities":"^3.2.2","@flowdesk/shared":"workspace:*","@flowdesk/ui":"workspace:*","@hookform/resolvers":"^5.2.1","@tanstack/react-query":"^5.90.0","@xyflow/react":"^12.9.2","lucide-react":"^0.468.0","motion":"^12.23.24","next":"^16.0.0","next-themes":"^0.4.6","react":"^19.1.1","react-dom":"^19.1.1","react-hook-form":"^7.62.0","zod":"^4.1.5"
   },
-  "dependencies": {
-    "@flowdesk/config": "workspace:*",
-    "next": "^16.0.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
-  },
-  "devDependencies": {
-    "@types/node": "^24.3.0",
-    "@types/react": "^19.1.12",
-    "@testing-library/jest-dom": "^6.8.0",
-    "@testing-library/react": "^16.3.0",
-    "@types/react-dom": "^19.1.9",
-    "@playwright/test": "^1.55.0",
-    "jsdom": "^26.1.0",
-    "tsx": "^4.20.5",
-    "vitest": "^3.2.4"
-  }
+  "devDependencies":{"@playwright/test":"^1.55.0","@tailwindcss/postcss":"^4.1.13","@testing-library/jest-dom":"^6.8.0","@testing-library/react":"^16.3.0","@types/node":"^24.3.0","@types/react":"^19.1.12","@types/react-dom":"^19.1.9","jsdom":"^26.1.0","postcss":"^8.5.6","tailwindcss":"^4.1.13","tsx":"^4.20.5","typescript":"^5.9.3","vitest":"^3.2.4"}
 }

@@ -1,24 +1,15 @@
-export default function HomePage() {
-  return (
-    <main>
-      <header>
-        <p>FlowDesk</p>
-        <h1>Keep client work moving.</h1>
-        <p>
-          One operational workspace for clients, projects, tasks, and trusted
-          workflows.
-        </p>
-        <nav aria-label="Primary">
-          <a href="mailto:hello@flowdesk.local">Request early access</a>
-        </nav>
-      </header>
-      <section aria-labelledby="how-it-works">
-        <h2 id="how-it-works">A calmer way to run the day</h2>
-        <p>
-          Connect the work your team owns to the automations that keep it on
-          track.
-        </p>
-      </section>
-    </main>
-  );
-}
+"use client";
+import Link from "next/link"; import { motion } from "motion/react"; import { ArrowRight,Check,Command,GitBranch,Layers3,LockKeyhole,MousePointer2,Network,Play,ShieldCheck,Sparkles,Users2,Zap } from "lucide-react"; import { Button,Card } from "@flowdesk/ui"; import { Brand } from "@/components/brand";
+const rise={initial:{opacity:0,y:22},animate:{opacity:1,y:0},transition:{duration:.7,ease:[.22,1,.36,1] as [number,number,number,number]}};
+export default function Home(){return <main className="marketing"><nav className="marketing-nav"><Brand/><div className="marketing-nav__links"><a href="#produto">Produto</a><a href="#workflows">Workflows</a><a href="#seguranca">Segurança</a><Link href="/login">Entrar</Link><Button asChild size="sm"><Link href="/register">Criar workspace <ArrowRight size={13}/></Link></Button></div></nav>
+<section className="hero"><div className="hero-inner"><motion.div {...rise}><h1>Seu trabalho deixa de ser uma lista. <em>Vira um fluxo.</em></h1><p className="hero-copy">Centralize clientes, projetos e tarefas em uma operação conectada. Defina como o trabalho acontece e deixe o FlowDesk executar o que é repetitivo — com histórico, contexto e controle.</p><div className="hero-actions"><Button asChild size="lg"><Link href="/register">Começar no FlowDesk <ArrowRight size={16}/></Link></Button><Button asChild size="lg" variant="secondary"><a href="#workflows"><Play size={15}/> Ver como funciona</a></Button></div><div className="hero-meta"><span><Check size={13}/> Multi-workspace e RBAC</span><span><Check size={13}/> Automação rastreável</span><span><Check size={13}/> Sem código arbitrário</span></div></motion.div>
+<motion.div className="flow-stage" initial={{opacity:0,scale:.96,y:20}} animate={{opacity:1,scale:1,y:0}} transition={{duration:.9,delay:.12,ease:[.22,1,.36,1]}}><div className="flow-window"><div className="flow-window__bar"><div className="window-dots"><i/><i/><i/></div><span className="fd-badge"><span className="status-dot" data-status="ACTIVE"/> Client onboarding</span><span style={{fontSize:11,color:"var(--muted)"}}>v4 · ativo</span></div><div className="flow-canvas-preview"><svg viewBox="0 0 560 410" preserveAspectRatio="none" aria-hidden="true"><path className="flow-path" d="M182 114 C245 114 210 232 270 232 S338 122 375 122"/><path className="flow-path" d="M430 150 C470 190 412 285 447 310"/></svg><div className="preview-node preview-node--trigger"><small><Network size={11}/> trigger</small><strong>Cliente criado</strong></div><div className="preview-node preview-node--condition"><small><GitBranch size={11}/> condição</small><strong>Prioridade ≥ Alta</strong></div><div className="preview-node preview-node--action"><small><Zap size={11}/> ação</small><strong>Criar onboarding</strong></div><div className="preview-node preview-node--action2"><small><Users2 size={11}/> ação</small><strong>Notificar responsável</strong></div><i className="preview-pulse"/></div><div className="flow-window__footer"><span>Última execução · 8s atrás</span><span style={{color:"var(--success)",fontWeight:700}}>4/4 etapas concluídas</span></div></div></motion.div></div></section>
+<section className="section" id="produto"><div className="section-inner"><span className="section-kicker">Uma operação, não cinco ferramentas</span><h2 className="section-title">Contexto suficiente para trabalhar. Estrutura suficiente para escalar.</h2><p className="section-lead">FlowDesk aproxima o cotidiano da equipe da lógica do processo. Clientes dão contexto, projetos organizam entrega, tarefas criam responsabilidade e workflows transformam regras em execução.</p><div className="feature-grid">
+<Card className="feature feature--wide"><div className="feature-icon"><Layers3 size={18}/></div><h3>Operação conectada</h3><p>Clientes, projetos, tarefas, responsáveis e atividade vivem no mesmo grafo operacional. Nada de procurar contexto em cinco abas.</p><div className="feature-code">CLIENT → PROJECT → TASK<br/>ACTIVITY → CONTEXT</div></Card>
+<Card className="feature"><div className="feature-icon"><Command size={18}/></div><h3>Rápido para quem opera</h3><p>Command palette, atalhos, feedback imediato, estados densos e uma navegação que favorece o trabalho recorrente.</p></Card>
+<Card className="feature"><div className="feature-icon"><MousePointer2 size={18}/></div><h3>Board realmente interativo</h3><p>Kanban com drag-and-drop otimista, rollback em falhas e um modelo que continua acessível via teclado.</p></Card>
+<Card className="feature feature--wide" id="workflows"><div className="feature-icon"><Network size={18}/></div><h3>Workflow Builder como produto, não feature</h3><p>Construa Trigger → Condition → Action visualmente. Valide antes de ativar, versiona a definição executada e acompanhe cada etapa do processamento.</p><div className="feature-code">EVENT → OUTBOX → QUEUE<br/>→ ENGINE → ACTIONS</div></Card>
+</div></div></section>
+<div className="proof-band" id="seguranca"><div><ShieldCheck size={20} style={{color:"var(--accent)"}}/><strong>Tenant first.</strong><p>Todo recurso é autorizado do usuário para a membership e então para o workspace. UUID conhecido não vira acesso. Automações usam o mesmo limite de tenant.</p></div><div><LockKeyhole size={20} style={{color:"var(--accent)"}}/><strong>Retry sem duplicar.</strong><p>Outbox transacional, IDs determinísticos, registros de idempotência, limite de profundidade e histórico de execução tornam falhas inspecionáveis em vez de silenciosas.</p></div></div>
+<section className="section"><div className="section-inner"><div className="cta-panel"><span className="section-kicker"><Sparkles size={13} style={{display:"inline",marginRight:6}}/>Organize. Conecte. Automatize.</span><h2>Seu processo pode trabalhar junto com sua equipe.</h2><p>Comece com o que já existe: clientes, projetos e tarefas. Quando estiver claro, conecte os pontos e tire o trabalho repetitivo do caminho.</p><div className="hero-actions"><Button asChild size="lg"><Link href="/register">Criar meu workspace <ArrowRight size={16}/></Link></Button><Button asChild size="lg" variant="secondary"><Link href="/login">Entrar na plataforma</Link></Button></div></div></div></section>
+<footer className="marketing-footer"><div><Brand/><span>FlowDesk · Operational management & visual workflow automation.</span></div></footer></main>}

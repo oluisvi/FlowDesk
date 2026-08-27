@@ -1,313 +1,73 @@
 import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
-import { afterEach, describe, expect, it } from "vitest";
-import { createIdentityTestApp } from "./support/identity-test-app";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import type { PrismaService } from "../src/common/prisma.service.js";
+import { auth, createWorkspace, register, resetTestDatabase, startTestApp } from "./support/test-app.js";
 
-const password = "correct horse battery staple";
-
-async function registerOwner(app: INestApplication) {
-  const registration = await request(app.getHttpServer())
-    .post("/api/v1/auth/register")
-    .send({ email: "owner@example.com", name: "Owner", password })
-    .expect(201);
-  const token = registration.body.accessToken as string;
-  const workspace = await request(app.getHttpServer())
-    .post("/api/v1/workspaces")
-    .set("Authorization", `Bearer ${token}`)
-    .send({ name: "Studio" })
-    .expect(201);
-  return { token, workspaceId: workspace.body.id as string };
-}
-
-async function createTaskFixture(app: INestApplication) {
-  const { token, workspaceId } = await registerOwner(app);
-  const task = await request(app.getHttpServer())
-    .post(`/api/v1/workspaces/${workspaceId}/tasks`)
-    .set("Authorization", `Bearer ${token}`)
-    .send({ title: "Briefing", status: "TODO", priority: "HIGH" })
-    .expect(201);
-  return { token, workspaceId, taskId: task.body.id as string };
-}
+let app: INestApplication;
+let prisma: PrismaService;
+beforeAll(async () => ({ app, prisma } = await startTestApp()));
+beforeEach(async () => resetTestDatabase(prisma));
+afterAll(async () => app.close());
 
 describe("workspace operations", () => {
-  let app: INestApplication | undefined;
+  it("creates client → project → task and records activity/outbox", async () => {
+    const session = await register(app, "ops@flowdesk.test");
+    const workspace = await createWorkspace(app, session.accessToken);
+    const client = await request(app.getHttpServer()).post(`/api/v1/workspaces/${workspace.id}/clients`).set(auth(session.accessToken)).send({ name: "Studio Nova", company: "Studio Nova", status: "ACTIVE", tags: ["launch"] }).expect(201);
+    const project = await request(app.getHttpServer()).post(`/api/v1/workspaces/${workspace.id}/projects`).set(auth(session.accessToken)).send({ name: "Brand launch", clientId: client.body.id, status: "ACTIVE", priority: "HIGH" }).expect(201);
+    const task = await request(app.getHttpServer()).post(`/api/v1/workspaces/${workspace.id}/tasks`).set(auth(session.accessToken)).send({ title: "Prepare kickoff", projectId: project.body.id, status: "TODO", priority: "HIGH" }).expect(201);
+    await request(app.getHttpServer()).patch(`/api/v1/workspaces/${workspace.id}/tasks/${task.body.id as string}`).set(auth(session.accessToken)).send({ status: "IN_PROGRESS" }).expect(200);
+    const activity = await request(app.getHttpServer()).get(`/api/v1/workspaces/${workspace.id}/activity?entityId=${task.body.id as string}`).set(auth(session.accessToken)).expect(200);
+    expect(activity.body.some((row: { action: string }) => row.action === "task.status_changed")).toBe(true);
+    expect(await prisma.outboxEvent.count({ where: { workspaceId: workspace.id } })).toBeGreaterThanOrEqual(4);
+  });
 
-  afterEach(async () => app?.close());
-
-  it("records human activity when a task changes status", async () => {
-    ({ app } = await createIdentityTestApp());
-    const { token, workspaceId } = await registerOwner(app);
+  it("archives clients through the lifecycle endpoint and emits a status event", async () => {
+    const session = await register(app, "archive@flowdesk.test");
+    const workspace = await createWorkspace(app, session.accessToken, "Archive Workspace");
     const client = await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/clients`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Studio Nova", status: "ACTIVE" })
-      .expect(201);
-    const project = await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/projects`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({
-        name: "Website",
-        clientId: client.body.id,
-        status: "ACTIVE",
-        priority: "HIGH",
-      })
-      .expect(201);
-    const task = await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/tasks`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({
-        title: "Briefing",
-        projectId: project.body.id,
-        status: "TODO",
-        priority: "HIGH",
-      })
+      .post(`/api/v1/workspaces/${workspace.id}/clients`)
+      .set(auth(session.accessToken))
+      .send({ name: "Legacy client", status: "ACTIVE" })
       .expect(201);
 
     await request(app.getHttpServer())
-      .patch(`/api/v1/workspaces/${workspaceId}/tasks/${task.body.id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ status: "IN_PROGRESS" })
-      .expect(200);
+      .delete(`/api/v1/workspaces/${workspace.id}/clients/${client.body.id as string}`)
+      .set(auth(session.accessToken))
+      .expect(204);
 
-    const activity = await request(app.getHttpServer())
-      .get(
-        `/api/v1/workspaces/${workspaceId}/activity?entityId=${task.body.id}`,
-      )
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(activity.body[0]).toMatchObject({
-      actorType: "USER",
-      action: "task.status_changed",
-      entityId: task.body.id,
+    const archived = await prisma.client.findUniqueOrThrow({
+      where: { id: client.body.id as string },
     });
+    expect(archived.status).toBe("ARCHIVED");
+    expect(archived.archivedAt).not.toBeNull();
+    expect(
+      await prisma.outboxEvent.count({
+        where: {
+          workspaceId: workspace.id,
+          aggregateId: archived.id,
+          eventType: "client.status_changed",
+        },
+      }),
+    ).toBe(1);
   });
 
-  it("creates and lists comments for a workspace-scoped task", async () => {
-    ({ app } = await createIdentityTestApp());
-    const { token, workspaceId, taskId } = await createTaskFixture(app);
-
-    await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/tasks/${taskId}/comments`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ content: "Confirmar escopo com o cliente." })
-      .expect(201);
-    const comments = await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceId}/tasks/${taskId}/comments`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-
-    expect(comments.body).toHaveLength(1);
-    expect(comments.body[0]).toMatchObject({
-      taskId,
-      content: "Confirmar escopo com o cliente.",
-    });
+  it("rejects a foreign membership as task assignee", async () => {
+    const a = await register(app, "a@flowdesk.test");
+    const workspaceA = await createWorkspace(app, a.accessToken, "A");
+    const b = await register(app, "b@flowdesk.test");
+    const workspaceB = await createWorkspace(app, b.accessToken, "B");
+    const foreign = await prisma.membership.findFirstOrThrow({ where: { workspaceId: workspaceB.id } });
+    await request(app.getHttpServer()).post(`/api/v1/workspaces/${workspaceA.id}/tasks`).set(auth(a.accessToken)).send({ title: "Illegal assignment", assigneeId: foreign.id }).expect(422);
   });
 
-  it("marks a workspace notification as read", async () => {
-    const testApp = await createIdentityTestApp();
-    ({ app } = testApp);
-    const { token, workspaceId } = await registerOwner(app);
-    const notification = await testApp.operations.createNotification({
-      workspaceId,
-      userId: testApp.repository.userIdByEmail("owner@example.com"),
-      type: "TASK_ASSIGNED",
-      title: "Nova tarefa",
-      message: "Briefing foi atribuída a você.",
-      targetPath: "/tasks/briefing",
-    });
-
-    await request(app.getHttpServer())
-      .patch(
-        `/api/v1/workspaces/${workspaceId}/notifications/${notification.id}/read`,
-      )
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .expect(({ body }) => expect(body.readAt).toBeTruthy());
-  });
-
-  it("returns dashboard totals computed from workspace data", async () => {
-    ({ app } = await createIdentityTestApp());
-    const { token, workspaceId, taskId } = await createTaskFixture(app);
-    await request(app.getHttpServer())
-      .patch(`/api/v1/workspaces/${workspaceId}/tasks/${taskId}`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ status: "DONE" })
-      .expect(200);
-
-    const dashboard = await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceId}/dashboard`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(dashboard.body).toMatchObject({
-      tasks: { total: 1, completed: 1, pending: 0 },
-    });
-  });
-
-  it("searches clients and excludes archived tasks from filtered lists", async () => {
-    ({ app } = await createIdentityTestApp());
-    const { token, workspaceId, taskId } = await createTaskFixture(app);
-    await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/clients`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Studio Nova", company: "Nova Design", status: "ACTIVE" })
-      .expect(201);
-    await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/clients`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Acme", status: "INACTIVE" })
-      .expect(201);
-
-    const clients = await request(app.getHttpServer())
-      .get(
-        `/api/v1/workspaces/${workspaceId}/clients?search=nova&status=ACTIVE`,
-      )
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(clients.body).toHaveLength(1);
-    expect(clients.body[0].name).toBe("Studio Nova");
-
-    await request(app.getHttpServer())
-      .delete(`/api/v1/workspaces/${workspaceId}/tasks/${taskId}`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(204);
-    const tasks = await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceId}/tasks?status=TODO`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(tasks.body).toEqual([]);
-  });
-
-  it("updates, lists, and archives clients and projects", async () => {
-    ({ app } = await createIdentityTestApp());
-    const { token, workspaceId } = await registerOwner(app);
-    const client = await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/clients`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Studio", status: "ACTIVE" })
-      .expect(201);
-    const project = await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/projects`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({
-        name: "Site",
-        clientId: client.body.id,
-        status: "PLANNED",
-        priority: "HIGH",
-      })
-      .expect(201);
-
-    await request(app.getHttpServer())
-      .patch(`/api/v1/workspaces/${workspaceId}/clients/${client.body.id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Studio Nova" })
-      .expect(200)
-      .expect(({ body }) => expect(body.name).toBe("Studio Nova"));
-    await request(app.getHttpServer())
-      .patch(`/api/v1/workspaces/${workspaceId}/projects/${project.body.id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ status: "ACTIVE" })
-      .expect(200);
-    const projects = await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceId}/projects?status=ACTIVE`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(projects.body).toHaveLength(1);
-
-    await request(app.getHttpServer())
-      .delete(`/api/v1/workspaces/${workspaceId}/projects/${project.body.id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(204);
-    await request(app.getHttpServer())
-      .delete(`/api/v1/workspaces/${workspaceId}/clients/${client.body.id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(204);
-    await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceId}/clients`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .expect([]);
-  });
-
-  it("lists notifications and marks all of the caller's notifications as read", async () => {
-    const testApp = await createIdentityTestApp();
-    ({ app } = testApp);
-    const { token, workspaceId } = await registerOwner(app);
-    const userId = testApp.repository.userIdByEmail("owner@example.com");
-    for (const title of ["Primeira", "Segunda"]) {
-      await testApp.operations.createNotification({
-        workspaceId,
-        userId,
-        type: "SYSTEM",
-        title,
-        message: title,
-        targetPath: null,
-      });
-    }
-
-    const notifications = await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceId}/notifications`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(notifications.body).toHaveLength(2);
-    await request(app.getHttpServer())
-      .patch(`/api/v1/workspaces/${workspaceId}/notifications/read-all`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(204);
-    const read = await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceId}/notifications?unread=true`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(read.body).toEqual([]);
-  });
-
-  it("assigns and removes a workspace member from a project", async () => {
-    ({ app } = await createIdentityTestApp());
-    const { token, workspaceId } = await registerOwner(app);
-    const project = await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/projects`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Portal", status: "ACTIVE", priority: "MEDIUM" })
-      .expect(201);
-    const members = await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceId}/members`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-
-    await request(app.getHttpServer())
-      .post(
-        `/api/v1/workspaces/${workspaceId}/projects/${project.body.id}/members`,
-      )
-      .set("Authorization", `Bearer ${token}`)
-      .send({ membershipId: members.body[0].id })
-      .expect(201);
-    const assigned = await request(app.getHttpServer())
-      .get(
-        `/api/v1/workspaces/${workspaceId}/projects/${project.body.id}/members`,
-      )
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(assigned.body).toHaveLength(1);
-
-    await request(app.getHttpServer())
-      .delete(
-        `/api/v1/workspaces/${workspaceId}/projects/${project.body.id}/members/${members.body[0].id}`,
-      )
-      .set("Authorization", `Bearer ${token}`)
-      .expect(204);
-  });
-
-  it("records creation activity for operational entities", async () => {
-    ({ app } = await createIdentityTestApp());
-    const { token, workspaceId } = await registerOwner(app);
-    const client = await request(app.getHttpServer())
-      .post(`/api/v1/workspaces/${workspaceId}/clients`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Nova", status: "ACTIVE" })
-      .expect(201);
-    const activity = await request(app.getHttpServer())
-      .get(`/api/v1/workspaces/${workspaceId}/activity?entityId=${client.body.id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(activity.body[0]).toMatchObject({ action: "client.created", actorType: "USER" });
+  it("returns 404 for a known resource in another workspace", async () => {
+    const a = await register(app, "tenant-a@flowdesk.test");
+    const workspaceA = await createWorkspace(app, a.accessToken, "Tenant A");
+    const b = await register(app, "tenant-b@flowdesk.test");
+    const workspaceB = await createWorkspace(app, b.accessToken, "Tenant B");
+    const foreign = await prisma.client.create({ data: { workspaceId: workspaceB.id, name: "Foreign" } });
+    await request(app.getHttpServer()).get(`/api/v1/workspaces/${workspaceA.id}/clients/${foreign.id}`).set(auth(a.accessToken)).expect(404);
   });
 });

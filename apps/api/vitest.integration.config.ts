@@ -1,14 +1,1 @@
-import { defineConfig } from "vitest/config";
-import { resolve } from "node:path";
-
-export default defineConfig({
-  test: {
-    include: ["test/**/*.integration-spec.ts"],
-  },
-  resolve: {
-    alias: {
-      "@flowdesk/config": resolve(__dirname, "../../packages/config/src"),
-      "@flowdesk/shared": resolve(__dirname, "../../packages/shared/src"),
-    },
-  },
-});
+import { defineConfig } from "vitest/config"; export default defineConfig({test:{environment:"node",include:["test/**/*.integration-spec.ts","test/**/*.e2e-spec.ts"],testTimeout:30000,hookTimeout:30000,pool:"forks",poolOptions:{forks:{singleFork:true}}}});

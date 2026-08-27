@@ -1,23 +1,39 @@
-import { INestApplication } from "@nestjs/common";
-import request from "supertest";
-import { afterEach, describe, expect, it } from "vitest";
-import { createApp } from "../app.factory";
+import { ServiceUnavailableException } from "@nestjs/common";
+import { describe, expect, it, vi } from "vitest";
+import { HealthController } from "./health.controller.js";
 
-describe("GET /api/v1/health", () => {
-  let app: INestApplication | undefined;
-
-  afterEach(async () => {
-    await app?.close();
+describe("HealthController", () => {
+  it("reports liveness without treating a degraded queue as process death", async () => {
+    const controller = new HealthController(
+      { $queryRaw: vi.fn() } as never,
+      { healthy: vi.fn().mockResolvedValue(false) } as never,
+    );
+    expect(await controller.health()).toMatchObject({
+      status: "ok",
+      service: "api",
+      queue: "degraded",
+    });
   });
 
-  it("returns the shared healthy response", async () => {
-    app = await createApp();
-    await app.init();
+  it("reports readiness only when PostgreSQL and Redis answer", async () => {
+    const controller = new HealthController(
+      { $queryRaw: vi.fn().mockResolvedValue([{ ok: 1 }]) } as never,
+      { healthy: vi.fn().mockResolvedValue(true) } as never,
+    );
+    await expect(controller.ready()).resolves.toMatchObject({
+      status: "ready",
+      database: "ok",
+      queue: "ok",
+    });
+  });
 
-    const response = await request(app.getHttpServer())
-      .get("/api/v1/health")
-      .expect(200);
-
-    expect(response.body).toEqual({ status: "ok", service: "api" });
+  it("fails readiness when a dependency is unavailable", async () => {
+    const controller = new HealthController(
+      { $queryRaw: vi.fn().mockRejectedValue(new Error("db down")) } as never,
+      { healthy: vi.fn().mockResolvedValue(true) } as never,
+    );
+    await expect(controller.ready()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 });

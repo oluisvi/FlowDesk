@@ -1,0 +1,2 @@
+import Link from "next/link"; import type { ReactNode } from "react"; import { Brand } from "@/components/brand";
+export function AuthShell({children}:{children:ReactNode}){return <main className="auth-page"><aside className="auth-brand"><Link href="/"><Brand/></Link><div className="auth-quote">O trabalho fica mais leve quando o processo deixa de morar na cabeça de alguém.</div><small>FlowDesk · Organização + colaboração + automação.</small></aside><section className="auth-panel">{children}</section></main>}
