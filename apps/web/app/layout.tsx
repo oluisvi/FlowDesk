@@ -8,4 +8,4 @@ import { PwaRegister } from "@/components/pwa-register";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 export const metadata: Metadata = { title: { default: "FlowDesk — Operações conectadas", template: "%s · FlowDesk" }, description: "Organize clientes, projetos e tarefas. Conecte processos e automatize o trabalho repetitivo com workflows visuais.", robots: { index: true, follow: true }, openGraph: { title: "FlowDesk", description: "Organize work. Connect processes. Automate what is repetitive.", type: "website" } };
 export const viewport: Viewport = { themeColor: "#0d9488" };
-export default function RootLayout({ children }: { children: React.ReactNode }) { return <html lang="pt-BR" suppressHydrationWarning><body className={inter.variable}><Providers><PwaRegister />{children}</Providers></body></html>; }
+export default function RootLayout({ children }: { children: React.ReactNode }) { return <html lang="pt-BR" data-scroll-behavior="smooth" suppressHydrationWarning><body className={inter.variable}><Providers><PwaRegister />{children}</Providers></body></html>; }
