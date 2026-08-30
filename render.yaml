@@ -29,6 +29,8 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
+      - key: DIRECT_URL
+        sync: false
       - key: REDIS_URL
         sync: false
       - key: JWT_ACCESS_SECRET
@@ -64,6 +66,8 @@ services:
       - key: FLOWDESK_PROCESS
         value: worker
       - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
         sync: false
       - key: REDIS_URL
         sync: false
