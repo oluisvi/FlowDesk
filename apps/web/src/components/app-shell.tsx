@@ -366,7 +366,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </div>
         </header>
-        {children}
+        <main className="app-content">{children}</main>
       </div>
       <CommandPalette open={commandOpen} onClose={closeCommand} />
     </div>
