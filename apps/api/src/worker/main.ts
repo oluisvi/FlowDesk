@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { Worker } from "bullmq";
+import { createServer } from "node:http";
 import { Redis } from "ioredis";
 import { AppModule } from "../app.module.js";
 import { FLOWDESK_EVENT_QUEUE } from "../outbox/queue-infrastructure.service.js";
@@ -29,6 +30,28 @@ async function bootstrap(): Promise<void> {
     { connection, concurrency: Number(process.env.WORKER_CONCURRENCY ?? 5) },
   );
 
+  const port = Number(process.env.PORT ?? 0);
+  const healthServer = port
+    ? createServer(async (request, response) => {
+        if (request.url !== "/health") {
+          response.writeHead(404).end();
+          return;
+        }
+        try {
+          await connection.ping();
+          response
+            .writeHead(200, { "content-type": "application/json" })
+            .end(JSON.stringify({ status: "ready", service: "worker" }));
+        } catch {
+          response
+            .writeHead(503, { "content-type": "application/json" })
+            .end(JSON.stringify({ status: "degraded", service: "worker" }));
+        }
+      }).listen(port, "0.0.0.0", () => {
+        logger.log(JSON.stringify({ type: "worker_health_started", port }));
+      })
+    : undefined;
+
   worker.on("completed", (job) => {
     logger.log(
       JSON.stringify({ type: "workflow_job_completed", jobId: job.id }),
@@ -45,6 +68,7 @@ async function bootstrap(): Promise<void> {
   });
 
   const shutdown = async () => {
+    await new Promise<void>((resolve) => healthServer?.close(() => resolve()) ?? resolve());
     await worker.close();
     await connection.quit();
     await app.close();

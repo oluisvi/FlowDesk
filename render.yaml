@@ -51,13 +51,14 @@ services:
         value: "5"
       - key: WORKFLOW_MAX_ACTIONS
         value: "25"
-  - type: worker
+  - type: web
     name: flowdesk-worker
     runtime: node
     region: ohio
     plan: starter
     buildCommand: corepack enable && pnpm install --no-frozen-lockfile && pnpm prisma:generate && pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/api build
     startCommand: node apps/api/dist/worker/main.js
+    healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
         value: 24.19.0
