@@ -1,4 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
+// Keep browser requests same-origin. Next.js proxies this route to the API,
+// allowing the strict HTTP-only refresh cookie to remain first-party in
+// production while preserving the same security model locally.
+const API_URL = "/api/v1";
 
 let accessToken: string | null = null;
 let refreshing: Promise<{ accessToken: string; user?: SessionUser } | null> | null = null;

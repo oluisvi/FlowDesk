@@ -1,8 +1,13 @@
 import type { NextConfig } from "next";
 
-const apiOrigin = (process.env.FLOWDESK_API_ORIGIN ?? "http://127.0.0.1:3001").replace(/\/$/, "");
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL;
+const apiOrigin = (
+  process.env.FLOWDESK_API_ORIGIN ??
+  configuredApiUrl?.replace(/\/api\/v1\/?$/, "") ??
+  "http://127.0.0.1:3001"
+).replace(/\/$/, "");
 const publicApiOrigin = (() => {
-  const value = process.env.NEXT_PUBLIC_API_URL;
+  const value = configuredApiUrl;
   if (!value) return undefined;
   try {
     return new URL(value).origin;
