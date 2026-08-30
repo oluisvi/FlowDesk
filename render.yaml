@@ -1,5 +1,19 @@
 services:
   - type: web
+    name: flowdesk-web
+    runtime: node
+    region: ohio
+    plan: starter
+    buildCommand: corepack enable && pnpm install --no-frozen-lockfile && pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/ui build && pnpm --filter @flowdesk/web build
+    startCommand: pnpm --filter @flowdesk/web start
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+  - type: web
     name: flowdesk-api
     runtime: node
     region: ohio
