@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const apiOrigin = (process.env.FLOWDESK_API_ORIGIN ?? "http://127.0.0.1:3001").replace(/\/$/, "");
+const publicApiOrigin = (() => {
+  const value = process.env.NEXT_PUBLIC_API_URL;
+  if (!value) return undefined;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return undefined;
+  }
+})();
 
 const scriptPolicy =
   process.env.NODE_ENV === "production"
@@ -23,7 +32,7 @@ const securityHeaders = [
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       scriptPolicy,
-      "connect-src 'self'",
+      `connect-src 'self'${publicApiOrigin ? ` ${publicApiOrigin}` : ""}`,
       "object-src 'none'",
     ].join("; "),
   },
