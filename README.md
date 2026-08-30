@@ -675,6 +675,18 @@ FlowDesk follows the "Structured Flow" direction:
 
 The workflow builder is the product's most recognizable visual surface, but it stays functional first: users should understand what a workflow will do before they activate it.
 
+## Visual QA (local workspace)
+
+The frontend was validated in the embedded local browser at `http://localhost:3000/` using an authenticated workspace session.
+
+- Audited workspace tabs: Overview, Clients, Projects, Tasks, Board, Workflows, Activity, Notifications and Settings.
+- Responsive breakpoints checked: 1440px, 1280px, 1024px, 768px, 390px and 320px.
+- No horizontal overflow was detected in any audited workspace tab.
+- Mobile navigation was checked with the drawer open, backdrop active and body scroll locked.
+- Empty, loading, disabled-action and form states were checked where the current workspace data exposed them.
+- Workflow editor and execution detail routes require an existing workflow/execution record; the QA workspace currently has no records to open for those detail states.
+- Public auth screens (landing, login, registration and password recovery) were inspected separately; authenticated navigation was performed through visible in-app links to preserve the local session.
+
 ## License
 
 Private project. All rights reserved unless a license is added later.
