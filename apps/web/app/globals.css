@@ -46,6 +46,14 @@
 @media(prefers-reduced-motion:reduce){.app-boot__mark span{animation:none;opacity:.75;transform:none!important}}
 .workspace-onboarding__panel{width:min(520px,100%);padding:clamp(28px,5vw,54px);border:1px solid var(--border);border-radius:24px;background:color-mix(in srgb,var(--panel) 96%,transparent);box-shadow:0 24px 70px rgb(0 0 0/.18);text-align:left}
 .workspace-onboarding__panel>.brand{margin-bottom:44px}
+.loading-panel{min-height:280px;display:flex;flex-direction:column;justify-content:center}
+.loading-panel__status{display:flex;align-items:center;gap:11px;margin-bottom:18px}
+.loading-panel__status strong{display:block;font-size:.82rem;letter-spacing:-.015em}
+.loading-panel__status span:not(.loading-panel__spinner){display:block;margin-top:3px;color:var(--muted);font-size:.68rem}
+.loading-panel__spinner{width:24px;height:24px;flex:0 0 24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:loadingSpin .8s linear infinite}
+@keyframes loadingSpin{to{transform:rotate(360deg)}}
+.loading-panel .fd-skeleton:last-child{opacity:.72}
+@media(prefers-reduced-motion:reduce){.loading-panel__spinner{animation:none;border-top-color:var(--accent);opacity:.8}}
 .workspace-onboarding__signal{display:flex;align-items:center;gap:7px;margin-bottom:22px;color:var(--accent)}
 .workspace-onboarding__signal span{width:8px;height:8px;border-radius:3px;background:currentColor;box-shadow:0 0 0 5px color-mix(in srgb,currentColor 10%,transparent)}
 .workspace-onboarding__signal i{width:26px;height:1px;background:color-mix(in srgb,var(--accent) 45%,var(--border));display:block}
@@ -186,8 +194,9 @@ html,body{max-width:100%;overflow-x:hidden}
   .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .fd-metric{min-height:98px}
   .filters{gap:8px}
-  .filter-actions{align-items:stretch;flex-direction:column}
-  .filter-actions .fd-badge{align-self:flex-start}
+  .filter-actions{align-items:center;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+  .filter-actions .fd-select{width:100%}
+  .filter-actions .fd-badge{align-self:center}
   .resource-card,.settings-panel,.panel{padding:14px}
   .project-row{grid-template-columns:minmax(0,1fr) auto;padding:12px}
   .project-row>.project-row__metric,.project-row>.fd-badge{display:none}
@@ -202,6 +211,11 @@ html,body{max-width:100%;overflow-x:hidden}
   .marketing-nav{width:calc(100% - 24px);padding-left:10px}
   .marketing-nav .brand{gap:.48rem}
   .marketing-nav .fd-button{padding-inline:.7rem;font-size:.74rem}
+}
+
+@media(max-width:360px){
+  .filter-actions{grid-template-columns:1fr}
+  .filter-actions .fd-badge{justify-self:start}
 }
 
 @media(max-width:360px){
