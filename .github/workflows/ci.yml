@@ -38,6 +38,7 @@ jobs:
     env:
       NODE_ENV: test
       DATABASE_URL: postgresql://flowdesk:flowdesk@127.0.0.1:5432/flowdesk?schema=public
+      DIRECT_URL: postgresql://flowdesk:flowdesk@127.0.0.1:5432/flowdesk?schema=public
       REDIS_URL: redis://127.0.0.1:6379
       JWT_ACCESS_SECRET: flowdesk-ci-secret-that-is-longer-than-thirty-two-characters
       NEXT_PUBLIC_API_URL: /api/v1
@@ -105,6 +106,7 @@ jobs:
       WEB_PORT: 3000
       API_PORT: 3001
       DATABASE_URL: postgresql://flowdesk:flowdesk@127.0.0.1:5432/flowdesk?schema=public
+      DIRECT_URL: postgresql://flowdesk:flowdesk@127.0.0.1:5432/flowdesk?schema=public
       REDIS_URL: redis://127.0.0.1:6379
       JWT_ACCESS_SECRET: flowdesk-browser-secret-that-is-longer-than-thirty-two-characters
       NEXT_PUBLIC_API_URL: /api/v1
