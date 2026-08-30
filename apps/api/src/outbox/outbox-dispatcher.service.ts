@@ -72,6 +72,15 @@ export class OutboxDispatcherService implements OnModuleInit, OnModuleDestroy {
           break;
         }
       }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message.slice(0, 1_000) : "Outbox flush failed";
+      this.logger.warn(
+        JSON.stringify({
+          type: "outbox_flush_failed",
+          message,
+        }),
+      );
     } finally {
       this.running = false;
     }
