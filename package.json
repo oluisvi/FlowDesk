@@ -9,7 +9,12 @@
   },
   "scripts": {
     "dev": "pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/ui build && concurrently -k -n api,web,worker -c blue,green,magenta \"pnpm --filter @flowdesk/api dev\" \"pnpm --filter @flowdesk/web dev\" \"pnpm --filter @flowdesk/api worker:dev\"",
+    "dev:api": "pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/api dev",
+    "dev:worker": "pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/api worker:dev",
+    "dev:web": "pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/ui build && pnpm --filter @flowdesk/web dev",
     "build": "pnpm --filter @flowdesk/shared build && pnpm --filter @flowdesk/config build && pnpm --filter @flowdesk/ui build && pnpm --filter @flowdesk/api build && pnpm --filter @flowdesk/web build",
+    "start:api": "node apps/api/dist/main.js",
+    "start:worker": "node apps/api/dist/worker/main.js",
     "format": "node scripts/format-check.mjs",
     "format:write": "prettier --write .",
     "lint": "pnpm -r --if-present lint",
