@@ -2,11 +2,29 @@
 
 **A multi-tenant operations workspace with visual workflow automation.**
 
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-11-e0234e?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-6-2d3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-4169e1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis%20%2B%20BullMQ-Workflow%20Queue-dc382d?style=for-the-badge&logo=redis&logoColor=white)](https://bullmq.io/)
+
 FlowDesk is a B2B SaaS MVP for small teams that need one calm, structured place to manage clients, projects, tasks, collaboration, activity, notifications and repeatable operational flows.
 
 It is not a generic admin panel, a CRM clone, or a pretty task board with fake automation. The core product bet is simple:
 
 > Organize the work. Connect the process. Automate the repetitive parts without losing control.
+
+## Quick Tour
+
+| Start here | What you get |
+| --- | --- |
+| [Why FlowDesk exists](#why-flowdesk-exists) | Product intent in plain language. |
+| [Experience Map](#experience-map) | Visual map of the core app surfaces. |
+| [Architecture](#architecture) | How web, API, database, queue and worker fit together. |
+| [Workflow Execution](#workflow-execution) | What happens when a domain event triggers automation. |
+| [Local Runtime](#local-runtime) | How to run the full MVP locally. |
+| [Demo Flow](#demo-flow) | The shortest path to understand the product end to end. |
 
 ## Why FlowDesk exists
 
@@ -27,6 +45,62 @@ The MVP proves three pillars:
 - **Collaboration**: multi-workspace membership, roles, invitations, notifications and activity.
 - **Automation**: visual workflows that react to domain events and execute trusted server-side actions.
 
+```mermaid
+mindmap
+  root((FlowDesk))
+    Organization
+      Clients
+      Projects
+      Tasks
+      Dashboard
+    Collaboration
+      Workspaces
+      Roles
+      Invitations
+      Comments
+      Notifications
+    Automation
+      Visual builder
+      Domain events
+      Queue
+      Worker
+      Execution history
+```
+
+## Experience Map
+
+FlowDesk opens directly as a working product, not a landing page. The main surfaces are designed for repeated operational use: quick scanning, clear ownership and predictable navigation.
+
+```mermaid
+flowchart LR
+  Login[Login / Register] --> Workspace[Workspace switch]
+  Workspace --> Dashboard[Dashboard]
+  Workspace --> Clients[Clients]
+  Workspace --> Projects[Projects]
+  Workspace --> Board[Kanban board]
+  Workspace --> Workflows[Workflow builder]
+  Workspace --> Activity[Activity feed]
+  Workspace --> Settings[Settings]
+
+  Clients --> Events[Domain events]
+  Projects --> Events
+  Board --> Events
+  Workflows --> Published[Published versions]
+  Events --> Automation[Automation engine]
+  Automation --> Notifications[Notifications]
+  Automation --> Activity
+```
+
+| Surface | Purpose | Why it matters |
+| --- | --- | --- |
+| Dashboard | Operational overview | Shows what needs attention before the user digs into lists. |
+| Clients | Account context | Keeps client work connected to projects, tasks and workflows. |
+| Projects | Delivery structure | Groups work without turning FlowDesk into a bloated PM clone. |
+| Board | Daily execution | Gives teams a compact Kanban surface for real work. |
+| Workflows | Automation design | Lets teams connect domain events to safe server-side actions. |
+| Activity | Shared memory | Makes user and automation changes visible. |
+| Settings | Workspace control | Handles members, invitations, sessions and account operations. |
+
 ## Current Status
 
 The MVP is implemented as a production-oriented local/cloud-ready application:
@@ -40,6 +114,38 @@ The MVP is implemented as a production-oriented local/cloud-ready application:
 - Local runtime verified with managed PostgreSQL and Redis.
 
 The project is currently easiest to run locally with managed free services for state, such as Aiven/Neon/Supabase for PostgreSQL and Upstash Redis for BullMQ.
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Product UI | Ready | Authenticated workspace UI, dashboard, operations, board and workflows. |
+| API | Ready | REST API with auth, RBAC, tenant scoping and normalized errors. |
+| Database | Ready | Prisma migrations applied against PostgreSQL. |
+| Worker | Ready | BullMQ worker executes durable workflow actions. |
+| Local runtime | Ready | Verified with managed PostgreSQL and Redis. |
+| Free cloud runtime | Deferred | Some free hosts require billing setup or suspend long-running services. |
+
+## How To Read This Repo
+
+```mermaid
+flowchart TD
+  README[README.md] --> Local[docs/LOCAL_RUNTIME.md]
+  README --> Architecture[docs/ARCHITECTURE.md]
+  README --> Security[docs/SECURITY.md]
+  Architecture --> API[apps/api]
+  Architecture --> Web[apps/web]
+  Architecture --> Packages[packages]
+  Local --> Env[.env.example]
+  Security --> Policies[PolicyService + scoped services]
+```
+
+| If you want to... | Open first |
+| --- | --- |
+| Run the app | `docs/LOCAL_RUNTIME.md` |
+| Understand the system shape | `docs/ARCHITECTURE.md` |
+| Review tenant/auth protections | `docs/SECURITY.md` |
+| Inspect API/domain behavior | `apps/api/src` |
+| Inspect the product UI | `apps/web/src/features` |
+| Inspect shared contracts | `packages/shared/src/contracts` |
 
 ## Product Highlights
 
@@ -68,48 +174,91 @@ The project is currently easiest to run locally with managed free services for s
 
 FlowDesk is a TypeScript monorepo and a modular monolith. The domain boundaries are explicit, but the MVP avoids premature microservices, Kafka, NATS or AI infrastructure.
 
-```text
-apps/web
-  Next.js App Router UI
-        |
-        | REST /api/v1
-        v
-apps/api
-  NestJS API
-        |
-        | Prisma
-        v
-PostgreSQL
-  tenant data
-  activity
-  audit logs
-  workflow definitions
-  workflow versions
-  workflow executions
-  transactional outbox
-        |
-        | outbox dispatcher
-        v
-Redis / BullMQ
-        |
-        v
-FlowDesk worker
-  workflow matching
-  validation-safe execution
-  idempotent actions
+```mermaid
+flowchart TB
+  subgraph Browser["Browser"]
+    Web["Next.js app<br/>apps/web"]
+  end
+
+  subgraph Server["Node runtime"]
+    API["NestJS REST API<br/>apps/api"]
+    Dispatcher["Outbox dispatcher"]
+    Worker["BullMQ worker<br/>apps/api/src/worker"]
+  end
+
+  subgraph Data["Managed state"]
+    DB[("PostgreSQL<br/>Prisma schema + migrations")]
+    Redis[("Redis<br/>BullMQ queue")]
+  end
+
+  Web -->|same-origin /api/v1| API
+  API -->|tenant-scoped reads/writes| DB
+  API -->|business transaction writes| DB
+  DB -->|pending outbox events| Dispatcher
+  Dispatcher -->|deterministic jobId = eventId| Redis
+  Redis -->|domain-event jobs| Worker
+  Worker -->|workflow execution + actions| DB
+  Worker -->|automation side effects| API
 ```
 
 The core request invariant is:
 
-```text
-authenticated user
-  -> workspace membership
-  -> PolicyService permission check
-  -> workspace-scoped resource lookup
-  -> operation
+```mermaid
+flowchart LR
+  User[Authenticated user] --> Guard[AccessGuard]
+  Guard --> Identity[RequestIdentity]
+  Identity --> Membership[Workspace membership]
+  Membership --> Policy[PolicyService]
+  Policy --> Scoped[Workspace-scoped lookup]
+  Scoped --> Operation[Allowed operation]
+
+  Rogue[Foreign UUID] -.-> Scoped
+  Scoped -. rejects .-> Rogue
 ```
 
 Knowing another tenant's UUID must never grant access. The server always re-resolves workspace-owned references inside the active workspace, including references used by automation actions.
+
+## Workflow Execution
+
+The automation path is durable on purpose. A user action first commits the business change and an outbox record in PostgreSQL. Only then does FlowDesk publish a queue job and let the worker execute the matching workflow version.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant Web as Next.js Web
+  participant API as NestJS API
+  participant DB as PostgreSQL
+  participant Queue as Redis / BullMQ
+  participant Worker as FlowDesk Worker
+
+  User->>Web: Create client / move task / update project
+  Web->>API: REST request with auth
+  API->>DB: Transaction: business row + activity + outbox event
+  DB-->>API: Commit
+  API-->>Web: Response
+  API->>DB: Dispatcher reads pending outbox
+  API->>Queue: Publish job with deterministic eventId
+  Queue->>Worker: Deliver domain-event job
+  Worker->>DB: Load active workflows + immutable version
+  Worker->>DB: Persist execution and step history
+  Worker->>DB: Run trusted tenant-scoped action
+  Worker-->>Web: Activity / notification visible on refresh
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Draft
+  Draft --> Active: validate + activate
+  Active --> Active: publish new immutable version
+  Active --> Inactive: deactivate
+  Inactive --> Active: validate + activate
+  Active --> Executing: domain event matched
+  Executing --> Succeeded: all actions completed
+  Executing --> Failed: guarded error / retry exhausted
+  Succeeded --> [*]
+  Failed --> [*]
+```
 
 ## Repository Map
 
@@ -144,19 +293,37 @@ Important project documents:
 
 ## Stack
 
-- **Language**: TypeScript
-- **Package manager**: pnpm
-- **Web**: Next.js App Router, React, TanStack Query
-- **Forms/validation**: React Hook Form, Zod
-- **Workflow canvas**: React Flow
-- **Drag and drop**: dnd-kit
-- **API**: NestJS, Express adapter
-- **Database**: PostgreSQL
-- **ORM/migrations**: Prisma
-- **Queue**: Redis + BullMQ
-- **Auth**: Argon2id, JWT access tokens, opaque refresh/reset tokens
-- **Testing**: Vitest, Supertest, Playwright
-- **Styling**: custom CSS system aligned to the "Structured Flow" product direction
+| Layer | Technology | Role |
+| --- | --- | --- |
+| Language | TypeScript | Shared language across web, API, worker and packages. |
+| Web | Next.js App Router, React | Authenticated product interface. |
+| Server state | TanStack Query | Cache, refetching and optimistic UI flows. |
+| Forms/contracts | React Hook Form, Zod | Typed validation at UI and shared-contract boundaries. |
+| Workflow canvas | React Flow | Visual automation builder. |
+| Drag and drop | dnd-kit | Kanban movement and responsive interactions. |
+| API | NestJS | REST API, auth, policy checks and domain services. |
+| Database | PostgreSQL | Durable tenant data and workflow history. |
+| ORM | Prisma | Schema, generated client and migrations. |
+| Queue | Redis + BullMQ | Asynchronous event delivery and retries. |
+| Auth | Argon2id, JWT, opaque tokens | Password, access, refresh and reset-token safety. |
+| Tests | Vitest, Supertest, Playwright | Unit, integration and browser journey coverage. |
+| Styling | Custom CSS system | Dense, calm, premium "Structured Flow" UI. |
+
+```mermaid
+quadrantChart
+  title FlowDesk MVP Balance
+  x-axis "Prototype" --> "Production-oriented"
+  y-axis "Generic admin" --> "Product-specific"
+  quadrant-1 "Strong MVP zone"
+  quadrant-2 "Polished but shallow"
+  quadrant-3 "Throwaway demo"
+  quadrant-4 "Heavy platform"
+  "Tenant security": [0.82, 0.76]
+  "Workflow engine": [0.78, 0.86]
+  "Local runtime": [0.74, 0.58]
+  "Visual builder": [0.68, 0.88]
+  "External integrations": [0.24, 0.38]
+```
 
 ## Local Runtime
 
@@ -171,6 +338,19 @@ The fastest current setup is:
 
 - Aiven, Neon or Supabase for PostgreSQL
 - Upstash Redis using its Redis/TLS URL, not the REST API URL
+
+```mermaid
+flowchart LR
+  Clone[Clone repo] --> Install[pnpm install]
+  Install --> Env[Create .env]
+  Env --> DB[Configure PostgreSQL]
+  Env --> Redis[Configure Redis]
+  DB --> Migrate[pnpm db:deploy]
+  Redis --> Migrate
+  Migrate --> Seed[pnpm db:seed]
+  Seed --> Dev[pnpm dev]
+  Dev --> Web[Open localhost:3000]
+```
 
 Create `.env`:
 
@@ -227,50 +407,82 @@ For more detail, see [`docs/LOCAL_RUNTIME.md`](docs/LOCAL_RUNTIME.md).
 
 ## Useful Scripts
 
-```bash
-pnpm dev              # web + api + worker
-pnpm dev:web          # Next.js only
-pnpm dev:api          # NestJS API only
-pnpm dev:worker       # BullMQ worker only
-pnpm build            # build shared packages, API and web
-pnpm start:api        # run built API
-pnpm start:worker     # run built worker
-pnpm db:deploy        # apply Prisma migrations
-pnpm db:seed          # seed development/demo data
-pnpm verify           # non-browser release gate
-pnpm test:e2e         # Playwright journeys
-```
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Starts web, API and worker together. |
+| `pnpm dev:web` | Starts only the Next.js app. |
+| `pnpm dev:api` | Starts only the NestJS API watcher. |
+| `pnpm dev:worker` | Starts only the BullMQ worker watcher. |
+| `pnpm build` | Builds shared packages, API and web. |
+| `pnpm start:api` | Runs the built API. |
+| `pnpm start:worker` | Runs the built worker. |
+| `pnpm db:deploy` | Applies Prisma migrations. |
+| `pnpm db:seed` | Creates development/demo data. |
+| `pnpm verify` | Runs the non-browser release gate. |
+| `pnpm test:e2e` | Runs Playwright browser journeys. |
 
 ## Quality Gates
 
 Run focused checks while iterating, then run the broader release gates before merging or deploying:
 
-```bash
-pnpm format
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm test:integration
-pnpm prisma:validate
-pnpm build
-pnpm test:e2e
+```mermaid
+flowchart LR
+  Format[pnpm format] --> Lint[pnpm lint]
+  Lint --> Types[pnpm typecheck]
+  Types --> Unit[pnpm test]
+  Unit --> Integration[pnpm test:integration]
+  Integration --> Prisma[pnpm prisma:validate]
+  Prisma --> Build[pnpm build]
+  Build --> Browser[pnpm test:e2e]
 ```
+
+| Gate | Purpose |
+| --- | --- |
+| `pnpm format` | Source formatting hygiene. |
+| `pnpm lint` | Static code rules. |
+| `pnpm typecheck` | TypeScript contract safety. |
+| `pnpm test` | Unit-level behavior. |
+| `pnpm test:integration` | API, database, auth, tenant and workflow behavior. |
+| `pnpm prisma:validate` | Prisma schema validity. |
+| `pnpm build` | Production build confidence. |
+| `pnpm test:e2e` | Browser journeys through the real product UI. |
 
 Integration tests are intentionally defensive around database hosts. Do not point destructive or test-reset flows at a production database.
 
 ## Demo Flow
 
-1. Sign in with the development seed owner.
-2. Open the `ServAgency` workspace.
-3. Review the dashboard, active clients, projects and tasks.
-4. Move tasks through the Kanban board and watch activity update.
-5. Open Workflows and inspect `Client onboarding`.
-6. Validate and activate a workflow.
-7. Create a client.
-8. The API writes the business record and outbox event in the same transaction.
-9. The dispatcher publishes the event to BullMQ.
-10. The worker executes the active workflow version.
-11. Inspect activity, notifications and workflow execution history.
+```mermaid
+journey
+  title FlowDesk MVP Demo Path
+  section Enter workspace
+    Sign in as seed owner: 5: User
+    Open ServAgency: 5: User
+    Review dashboard: 4: User
+  section Work manually
+    Inspect clients and projects: 4: User
+    Move task on Kanban: 5: User
+    See activity update: 5: User
+  section Automate
+    Open Client onboarding workflow: 5: User
+    Validate and activate: 4: User
+    Create a client: 5: User
+  section Verify automation
+    Worker executes workflow: 5: Worker
+    Notification appears: 5: User
+    Execution history is inspectable: 5: User
+```
+
+| Step | User action | System response |
+| --- | --- | --- |
+| 1 | Sign in with the development seed owner. | FlowDesk creates an authenticated session. |
+| 2 | Open the `ServAgency` workspace. | The API resolves membership and permissions. |
+| 3 | Review dashboard, clients, projects and tasks. | Tenant-scoped data loads into the workspace shell. |
+| 4 | Move a task through the Kanban board. | The UI updates optimistically and the API persists activity. |
+| 5 | Open `Client onboarding`. | The visual workflow builder loads on demand. |
+| 6 | Validate and activate the workflow. | FlowDesk stores an immutable published version. |
+| 7 | Create a client. | The API writes the client and outbox event in one transaction. |
+| 8 | Wait for automation. | The dispatcher publishes a BullMQ job and the worker executes actions. |
+| 9 | Inspect notifications and execution history. | The automation is visible and auditable. |
 
 That path is the heart of the MVP: a real domain mutation triggers a real asynchronous automation with durable execution records.
 
@@ -278,22 +490,31 @@ That path is the heart of the MVP: a real domain mutation triggers a real asynch
 
 Main route groups under `/api/v1`:
 
-```text
-/auth/*
-/workspaces/*
-/workspaces/:workspaceId/clients/*
-/workspaces/:workspaceId/projects/*
-/workspaces/:workspaceId/tasks/*
-/workspaces/:workspaceId/activity
-/workspaces/:workspaceId/notifications/*
-/workspaces/:workspaceId/dashboard
-/workspaces/:workspaceId/workflows/*
-/workspaces/:workspaceId/workflow-executions/*
-```
+| Route group | Area |
+| --- | --- |
+| `/auth/*` | Login, register, refresh, logout, sessions and password recovery. |
+| `/workspaces/*` | Workspace creation, switching, invitations and members. |
+| `/workspaces/:workspaceId/clients/*` | Client records. |
+| `/workspaces/:workspaceId/projects/*` | Project records and project membership. |
+| `/workspaces/:workspaceId/tasks/*` | Tasks, assignment, status changes and comments. |
+| `/workspaces/:workspaceId/activity` | User-facing operational timeline. |
+| `/workspaces/:workspaceId/notifications/*` | In-app notifications. |
+| `/workspaces/:workspaceId/dashboard` | Aggregated workspace overview. |
+| `/workspaces/:workspaceId/workflows/*` | Workflow list, draft editing, validation and activation. |
+| `/workspaces/:workspaceId/workflow-executions/*` | Execution list and execution detail. |
 
 Errors use a normalized response envelope with correlation IDs. Browser refresh is handled through strict HTTP-only cookies.
 
 ## Workflow Model
+
+```mermaid
+flowchart LR
+  Trigger["Trigger<br/>domain event"] --> Condition{"Condition<br/>optional"}
+  Condition -->|true| ActionA["Action<br/>create/update/notify"]
+  Condition -->|false| Skip["Skip branch"]
+  ActionA --> ActionB["Next action"]
+  ActionB --> History["Execution history"]
+```
 
 Supported trigger nodes:
 
@@ -319,6 +540,28 @@ Workflow definitions are declarative. There is no arbitrary JavaScript, no shell
 ## Security Model
 
 FlowDesk treats the workspace as the primary security boundary.
+
+```mermaid
+flowchart TB
+  subgraph WorkspaceA["Workspace A"]
+    AUser[Member]
+    AClient[Client A]
+    ATask[Task A]
+    AWorkflow[Workflow A]
+  end
+
+  subgraph WorkspaceB["Workspace B"]
+    BClient[Client B]
+    BTask[Task B]
+  end
+
+  AUser --> Policy[PolicyService]
+  Policy --> AClient
+  Policy --> ATask
+  Policy --> AWorkflow
+  Policy -. rejects foreign IDs .-> BClient
+  Policy -. rejects foreign IDs .-> BTask
+```
 
 Key protections:
 
