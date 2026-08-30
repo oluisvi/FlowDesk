@@ -394,6 +394,16 @@ Open:
 - Web: `http://localhost:3000`
 - API health: `http://localhost:3001/api/v1/health/ready`
 
+### Open FlowDesk on a phone over Wi‑Fi
+
+The web dev server listens on the local network by default. Start the stack on your PC, find its LAN IPv4 address (for example with `ipconfig` on Windows), then open this on a phone connected to the same Wi‑Fi:
+
+```text
+http://<IP-DO-PC>:3000
+```
+
+If Windows Firewall asks for permission, allow Node.js on **Private networks**. The API remains proxied through the web app, so the phone does not need a separate API URL. Set `WEB_HOST=127.0.0.1` if you want to restrict the web server to the current machine.
+
 Default seed owner for development:
 
 ```text
