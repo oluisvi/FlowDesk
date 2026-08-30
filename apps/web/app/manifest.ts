@@ -1,0 +1,2 @@
+import type { MetadataRoute } from "next";
+export default function manifest(): MetadataRoute.Manifest { return { name: "FlowDesk", short_name: "FlowDesk", description: "Operações conectadas e workflows visuais.", start_url: "/", display: "standalone", background_color: "#f7f9fb", theme_color: "#0d9488", lang: "pt-BR", icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }] }; }
