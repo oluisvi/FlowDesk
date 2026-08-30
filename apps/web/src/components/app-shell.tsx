@@ -174,7 +174,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   if (!ready || !user) {
-    return <div className="app-boot">Preparando sua operação…</div>;
+    return (
+      <main className="app-boot" aria-live="polite" aria-busy="true">
+        <div className="app-boot__mark" aria-hidden="true">
+          <span /><span /><span />
+        </div>
+        <strong>Preparando sua operação</strong>
+        <p>Conectando seus espaços de trabalho…</p>
+      </main>
+    );
   }
 
   if (workspaces.length === 0) {

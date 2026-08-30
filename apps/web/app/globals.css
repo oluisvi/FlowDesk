@@ -37,6 +37,13 @@
 
 /* final product surfaces */
 .workspace-onboarding{min-height:100dvh;display:grid;place-items:center;padding:32px;background:radial-gradient(circle at 50% -20%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 42%),var(--bg)}
+.app-boot{min-height:100dvh;display:grid;place-items:center;align-content:center;gap:10px;background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 30%),var(--bg);color:var(--text);text-align:center}
+.app-boot__mark{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;margin-bottom:8px}
+.app-boot__mark span{width:10px;height:10px;border-radius:3px;background:var(--accent);animation:bootPulse 1.15s ease-in-out infinite;box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 9%,transparent)}
+.app-boot__mark span:nth-child(2){animation-delay:.16s;transform:translateY(-6px)}.app-boot__mark span:nth-child(3){animation-delay:.32s}
+.app-boot strong{font-size:.88rem;letter-spacing:-.01em}.app-boot p{margin:0;color:var(--muted);font-size:.72rem}
+@keyframes bootPulse{0%,100%{opacity:.3;transform:translateY(5px) scale(.82)}50%{opacity:1;transform:translateY(-3px) scale(1)}}
+@media(prefers-reduced-motion:reduce){.app-boot__mark span{animation:none;opacity:.75;transform:none!important}}
 .workspace-onboarding__panel{width:min(520px,100%);padding:clamp(28px,5vw,54px);border:1px solid var(--border);border-radius:24px;background:color-mix(in srgb,var(--panel) 96%,transparent);box-shadow:0 24px 70px rgb(0 0 0/.18);text-align:left}
 .workspace-onboarding__panel>.brand{margin-bottom:44px}
 .workspace-onboarding__signal{display:flex;align-items:center;gap:7px;margin-bottom:22px;color:var(--accent)}
